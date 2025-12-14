@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EV Charging Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+    <style>
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(16, 185, 129, 0.6); }
+        }
+        @keyframes charge-flow {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        @keyframes rain {
+            0% { transform: translateY(-100%); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateY(100%); opacity: 0; }
+        }
+        @keyframes lightning {
+            0%, 90%, 100% { opacity: 0; }
+            92%, 94% { opacity: 1; }
+        }
+        @keyframes car-bounce {
+            0%, 100% { transform: translateY(0) rotate(-1deg); }
+            50% { transform: translateY(-3px) rotate(1deg); }
+        }
+        @keyframes energy-wave {
+            0% { transform: scaleX(0); opacity: 1; }
+            100% { transform: scaleX(1); opacity: 0; }
+        }
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        @keyframes gradient-shift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        .float-animation { animation: float 3s ease-in-out infinite; }
+        .pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+        .charge-flow {
+            background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.5), transparent);
+            background-size: 200% 100%;
+            animation: charge-flow 1.5s linear infinite;
+        }
+        .car-bounce { animation: car-bounce 2s ease-in-out infinite; }
+        .spin-slow { animation: spin-slow 8s linear infinite; }
+        .gradient-shift {
+            background-size: 200% 200%;
+            animation: gradient-shift 3s ease infinite;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .glow-green { filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.5)); }
+        .glow-blue { filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.5)); }
+        .glow-amber { filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.5)); }
+    </style>
+</head>
+<body class="bg-neutral-950 text-neutral-100 min-h-screen antialiased overflow-x-hidden" style="font-family: 'Inter', sans-serif;">
+    
+    <!-- Animated Background -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-1/4 -left-32 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl spin-slow"></div>
+        <div class="absolute bottom-1/4 -right-32 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl spin-slow" style="animation-direction: reverse;"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-emerald-500/5 via-blue-500/5 to-purple-500/5 rounded-full blur-3xl gradient-shift"></div>
+    </div>
+
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        
+        <!-- Header -->
+        <header class="flex items-center justify-between mb-10 sm:mb-14">
+            <div class="flex items-center gap-3 group cursor-pointer">
+                <div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center pulse-glow transition-transform group-hover:scale-110">
+                    <span class="iconify text-white" data-icon="lucide:zap" data-width="22" data-height="22" style="stroke-width: 1.5;"></span>
+                </div>
+                <span class="text-xl font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">charge</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="hidden sm:flex items-center gap-2 glass rounded-full px-4 py-2">
+                    <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                    <span class="text-xs text-neutral-400" id="last-update">Connecting...</span>
+                </div>
+                <a href="cp_manager.html" class="glass rounded-full px-4 py-2 hover:bg-white/10 transition-all hover:scale-105 active:scale-95 flex items-center gap-2">
+                    <span class="iconify text-violet-400" data-icon="lucide:settings" data-width="18" data-height="18" style="stroke-width: 1.5;"></span>
+                    <span class="text-xs text-neutral-300 hidden sm:inline">CP Manager</span>
+                </a>
+                <button onclick="updateAll()" class="glass rounded-full p-2.5 hover:bg-white/10 transition-all hover:scale-105 active:scale-95">
+                    <span class="iconify text-neutral-400" data-icon="lucide:refresh-cw" data-width="18" data-height="18" style="stroke-width: 1.5;"></span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-10 sm:mb-14">
+            <div class="glass rounded-2xl p-5 sm:p-6 group hover:bg-white/5 transition-all duration-300 hover:-translate-y-1 cursor-pointer">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-600/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <span class="iconify text-violet-400" data-icon="lucide:plug-zap" data-width="24" data-height="24" style="stroke-width: 1.5;"></span>
+                    </div>
+                    <span class="iconify text-neutral-700 group-hover:text-neutral-500 transition-colors" data-icon="lucide:arrow-up-right" data-width="18" data-height="18" style="stroke-width: 1.5;"></span>
+                </div>
+                <div class="text-3xl sm:text-4xl font-bold tracking-tight mb-1" id="stat-total-cps">0</div>
+                <div class="text-neutral-500 text-xs font-medium uppercase tracking-wider">Total CPs</div>
+            </div>
+            
+            <div class="glass rounded-2xl p-5 sm:p-6 group hover:bg-white/5 transition-all duration-300 hover:-translate-y-1 cursor-pointer relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="relative">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <span class="iconify text-emerald-400 glow-green" data-icon="lucide:power" data-width="24" data-height="24" style="stroke-width: 1.5;"></span>
+                        </div>
+                        <div class="flex items-center gap-1 text-emerald-400 text-xs font-medium">
+                            <span class="iconify" data-icon="lucide:trending-up" data-width="14" data-height="14" style="stroke-width: 1.5;"></span>
+                            <span>Online</span>
+                        </div>
+                    </div>
+                    <div class="text-3xl sm:text-4xl font-bold tracking-tight mb-1 text-emerald-400" id="stat-active-cps">0</div>
+                    <div class="text-neutral-500 text-xs font-medium uppercase tracking-wider">Active</div>
+                </div>
+            </div>
+            
+            <div class="glass rounded-2xl p-5 sm:p-6 group hover:bg-white/5 transition-all duration-300 hover:-translate-y-1 cursor-pointer relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="absolute top-0 left-0 right-0 h-1 charge-flow rounded-t-2xl" id="charging-indicator"></div>
+                <div class="relative">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <span class="iconify text-blue-400 glow-blue" data-icon="lucide:battery-charging" data-width="24" data-height="24" style="stroke-width: 1.5;"></span>
+                        </div>
+                        <div class="flex gap-0.5">
+                            <div class="w-1 h-3 bg-blue-400 rounded-full animate-pulse"></div>
+                            <div class="w-1 h-3 bg-blue-400 rounded-full animate-pulse" style="animation-delay: 0.2s;"></div>
+                            <div class="w-1 h-3 bg-blue-400 rounded-full animate-pulse" style="animation-delay: 0.4s;"></div>
+                        </div>
+                    </div>
+                    <div class="text-3xl sm:text-4xl font-bold tracking-tight mb-1 text-blue-400" id="stat-charging-now">0</div>
+                    <div class="text-neutral-500 text-xs font-medium uppercase tracking-wider">Charging</div>
+                </div>
+            </div>
+            
+            <div class="glass rounded-2xl p-5 sm:p-6 group hover:bg-white/5 transition-all duration-300 hover:-translate-y-1 cursor-pointer relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="relative">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-600/20 flex items-center justify-center group-hover:scale-110 transition-transform car-bounce">
+                            <span class="iconify text-amber-400 glow-amber" data-icon="lucide:car" data-width="24" data-height="24" style="stroke-width: 1.5;"></span>
+                        </div>
+                        <div class="text-xs text-neutral-500 font-medium">EV Fleet</div>
+                    </div>
+                    <div class="text-3xl sm:text-4xl font-bold tracking-tight mb-1 text-amber-400" id="stat-total-drivers">0</div>
+                    <div class="text-neutral-500 text-xs font-medium uppercase tracking-wider">Drivers</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Message -->
+        <div id="error-message" class="hidden mb-8 glass border-red-500/30 rounded-2xl p-5 relative overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-r from-red-500/10 to-transparent"></div>
+            <div class="relative flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
+                    <span class="iconify text-red-400" data-icon="lucide:wifi-off" data-width="20" data-height="20" style="stroke-width: 1.5;"></span>
+                </div>
+                <div>
+                    <div class="text-red-400 font-medium text-sm">Connection Lost</div>
+                    <div class="text-neutral-500 text-xs">Cannot connect to backend API</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="grid lg:grid-cols-3 gap-5 sm:gap-6 mb-10 sm:mb-14">
+            
+            <!-- Charging Points -->
+            <div class="lg:col-span-2 glass rounded-2xl p-5 sm:p-6 relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-emerald-500/5 to-transparent rounded-full blur-2xl"></div>
+                <div class="relative">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-blue-500/20 flex items-center justify-center">
+                                <span class="iconify text-emerald-400" data-icon="lucide:plug-zap" data-width="20" data-height="20" style="stroke-width: 1.5;"></span>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-semibold text-neutral-200">Charging Points</h2>
+                                <p class="text-xs text-neutral-500">Real-time station status</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                            <span class="text-xs text-neutral-500">Available</span>
+                            <span class="w-2 h-2 bg-blue-500 rounded-full ml-2"></span>
+                            <span class="text-xs text-neutral-500">Charging</span>
+                        </div>
+                    </div>
+                    <div id="cps-list" class="grid sm:grid-cols-2 gap-4">
+                        <div class="text-neutral-600 text-sm text-center py-12 col-span-2">Loading...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="space-y-5 sm:space-y-6">
+                
+                <!-- Drivers -->
+                <div class="glass rounded-2xl p-5 sm:p-6 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-500/10 to-transparent rounded-full blur-xl"></div>
+                    <div class="relative">
+                        <div class="flex items-center gap-3 mb-5">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center car-bounce">
+                                <span class="iconify text-amber-400" data-icon="lucide:car" data-width="20" data-height="20" style="stroke-width: 1.5;"></span>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-semibold text-neutral-200">Drivers</h2>
+                                <p class="text-xs text-neutral-500">Fleet status</p>
+                            </div>
+                        </div>
+                        <div id="drivers-list" class="space-y-2">
+                            <div class="text-neutral-600 text-sm text-center py-8">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weather Alerts -->
+                <div class="glass rounded-2xl p-5 sm:p-6 relative overflow-hidden" id="weather-card">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-cyan-500/10 to-transparent rounded-full blur-xl"></div>
+                    <div class="relative">
+                        <div class="flex items-center gap-3 mb-5">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center float-animation">
+                                <span class="iconify text-cyan-400" data-icon="lucide:cloud-sun" data-width="20" data-height="20" style="stroke-width: 1.5;"></span>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-semibold text-neutral-200">Weather</h2>
+                                <p class="text-xs text-neutral-500">Environmental alerts</p>
+                            </div>
+                        </div>
+                        <div id="weather-alerts">
+                            <div class="text-neutral-600 text-sm text-center py-8">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Energy Stats -->
+                <div class="glass rounded-2xl p-5 sm:p-6 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-transparent rounded-full blur-xl"></div>
+                    <div class="relative">
+                        <div class="flex items-center gap-3 mb-5">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
+                                <span class="iconify text-purple-400 spin-slow" data-icon="lucide:atom" data-width="20" data-height="20" style="stroke-width: 1.5;"></span>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-semibold text-neutral-200">Energy Today</h2>
+                                <p class="text-xs text-neutral-500">Total delivered</p>
+                            </div>
+                        </div>
+                        <div class="text-center py-4">
+                            <div class="text-4xl font-bold tracking-tight bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-2" id="total-energy">0.0</div>
+                            <div class="text-xs text-neutral-500 uppercase tracking-wider">Kilowatt Hours</div>
+                            <div class="mt-4 flex items-center justify-center gap-2 text-emerald-400 text-xs">
+                                <span class="iconify" data-icon="lucide:leaf" data-width="14" data-height="14" style="stroke-width: 1.5;"></span>
+                                <span id="co2-saved">0 kg CO₂ saved</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History -->
+        <div class="glass rounded-2xl p-5 sm:p-6 relative overflow-hidden">
+            <div class="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-blue-500/5 to-transparent rounded-full blur-3xl"></div>
+            <div class="relative">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
+                            <span class="iconify text-blue-400" data-icon="lucide:history" data-width="20" data-height="20" style="stroke-width: 1.5;"></span>
+                        </div>
+                        <div>
+                            <h2 class="text-base font-semibold text-neutral-200">Recent Sessions</h2>
+                            <p class="text-xs text-neutral-500">Completed charging sessions</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-neutral-500 text-xs border-b border-neutral-800/50">
+                                <th class="text-left font-medium pb-4 uppercase tracking-wider">Time</th>
+                                <th class="text-left font-medium pb-4 uppercase tracking-wider">Driver</th>
+                                <th class="text-left font-medium pb-4 uppercase tracking-wider">Station</th>
+                                <th class="text-right font-medium pb-4 uppercase tracking-wider">Energy</th>
+                                <th class="text-right font-medium pb-4 uppercase tracking-wider">Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table" class="text-neutral-300">
+                            <tr><td colspan="5" class="text-neutral-600 text-center py-12">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api';
+        let errorCount = 0;
+        let totalEnergyDelivered = 0;
+
+        function formatTimestamp(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function showError(show) {
+            document.getElementById('error-message').classList.toggle('hidden', !show);
+        }
+
+        async function updateCPs() {
+            try {
+                const response = await fetch(`${API_BASE}/cps`);
+                if (!response.ok) throw new Error('API Error');
+                const data = await response.json();
+                errorCount = 0;
+                showError(false);
+                
+                const cpsList = document.getElementById('cps-list');
+                
+                if (!data.charging_points || data.charging_points.length === 0) {
+                    cpsList.innerHTML = '<div class="text-neutral-600 text-sm text-center py-12 col-span-2">No charging points</div>';
+                    return;
+                }
+
+                let totalEnergy = 0;
+                
+                cpsList.innerHTML = data.charging_points.map(cp => {
+                    const isCharging = cp.state === 'SUPPLYING';
+                    const isOffline = cp.state === 'OUT_OF_ORDER';
+                    const isAvailable = cp.state === 'ACTIVATED';
+                    const progress = isCharging ? Math.min(100, Math.round((cp.kwh_delivered / (cp.kwh_needed || 10)) * 100)) : 0;
+                    
+                    if (isCharging) totalEnergy += cp.kwh_delivered;
+                    
+                    const gradients = {
+                        'ACTIVATED': 'from-emerald-500/10 to-emerald-600/5',
+                        'SUPPLYING': 'from-blue-500/10 to-blue-600/5',
+                        'STOPPED': 'from-amber-500/10 to-amber-600/5',
+                        'OUT_OF_ORDER': 'from-red-500/10 to-red-600/5'
+                    };
+                    
+                    const icons = {
+                        'ACTIVATED': { icon: 'lucide:plug', color: 'text-emerald-400', glow: 'glow-green' },
+                        'SUPPLYING': { icon: 'lucide:zap', color: 'text-blue-400', glow: 'glow-blue' },
+                        'STOPPED': { icon: 'lucide:pause-circle', color: 'text-amber-400', glow: 'glow-amber' },
+                        'OUT_OF_ORDER': { icon: 'lucide:alert-triangle', color: 'text-red-400', glow: '' }
+                    };
+                    
+                    const iconData = icons[cp.state] || icons['ACTIVATED'];
+                    
+                    return `
+                        <div class="group relative bg-gradient-to-br ${gradients[cp.state] || gradients['ACTIVATED']} border border-neutral-800/50 rounded-xl p-4 hover:border-neutral-700/50 transition-all duration-300 hover:-translate-y-1 cursor-pointer ${isOffline ? 'opacity-50' : ''}">
+                            ${isCharging ? '<div class="absolute top-0 left-0 right-0 h-0.5 charge-flow rounded-t-xl"></div>' : ''}
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-lg bg-neutral-800/50 flex items-center justify-center ${isCharging ? 'animate-pulse' : ''}">
+                                        <span class="iconify ${iconData.color} ${iconData.glow}" data-icon="${iconData.icon}" data-width="20" data-height="20" style="stroke-width: 1.5;"></span>
+                                    </div>
+                                    <div>
+                                        <div class="font-semibold text-sm">${cp.cp_id}</div>
+                                        <div class="text-xs text-neutral-500">${cp.price_per_kwh}€/kWh</div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-xs font-medium ${iconData.color}">${cp.state.replace('_', ' ')}</div>
+                                    ${isCharging ? `<div class="text-xs text-neutral-500">${progress}%</div>` : ''}
+                                </div>
+                            </div>
+                            ${isCharging ? `
+                                <div class="space-y-3">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center car-bounce">
+                                            <span class="iconify text-amber-400" data-icon="lucide:car" data-width="12" data-height="12" style="stroke-width: 1.5;"></span>
+                                        </div>
+                                        <span class="text-xs text-neutral-300 font-medium">${cp.current_driver}</span>
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center justify-between text-xs mb-2">
+                                            <span class="text-neutral-500">Progress</span>
+                                            <span class="text-blue-400 font-medium">${cp.kwh_delivered.toFixed(1)} kWh</span>
+                                        </div>
+                                        <div class="h-2 bg-neutral-800 rounded-full overflow-hidden">
+                                            <div class="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-500 rounded-full relative" style="width: ${progress}%">
+                                                <div class="absolute inset-0 bg-white/20 animate-pulse"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : isAvailable ? `
+                                <div class="flex items-center justify-center py-3 border-t border-neutral-800/30 mt-2">
+                                    <span class="text-xs text-emerald-400 flex items-center gap-2">
+                                        <span class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
+                                        Ready to charge
+                                    </span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('');
+                
+                totalEnergyDelivered = totalEnergy;
+                document.getElementById('total-energy').textContent = totalEnergy.toFixed(1);
+                document.getElementById('co2-saved').textContent = `${(totalEnergy * 0.4).toFixed(1)} kg CO₂ saved`;
+                
+            } catch (error) {
+                errorCount++;
+                if (errorCount > 3) showError(true);
+                document.getElementById('cps-list').innerHTML = '<div class="text-neutral-600 text-sm text-center py-12 col-span-2">Error loading</div>';
+            }
+        }
+
+        async function updateDrivers() {
+            try {
+                const response = await fetch(`${API_BASE}/drivers`);
+                if (!response.ok) throw new Error('API Error');
+                const data = await response.json();
+                
+                const driversList = document.getElementById('drivers-list');
+                
+                if (!data.drivers || data.drivers.length === 0) {
+                    driversList.innerHTML = '<div class="text-neutral-600 text-sm text-center py-8">No drivers</div>';
+                    return;
+                }
+
+                driversList.innerHTML = data.drivers.map(driver => {
+                    const isCharging = driver.status === 'CHARGING';
+                    return `
+                        <div class="group flex items-center justify-between p-3 rounded-xl ${isCharging ? 'bg-gradient-to-r from-blue-500/10 to-transparent border border-blue-500/20' : 'bg-neutral-800/20 border border-transparent'} hover:bg-neutral-800/40 transition-all cursor-pointer">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg ${isCharging ? 'bg-blue-500/20' : 'bg-neutral-700/50'} flex items-center justify-center ${isCharging ? 'car-bounce' : ''}">
+                                    <span class="iconify ${isCharging ? 'text-blue-400' : 'text-neutral-500'}" data-icon="lucide:car" data-width="16" data-height="16" style="stroke-width: 1.5;"></span>
+                                </div>
+                                <span class="text-sm font-medium">${driver.driver_id}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                ${isCharging ? `
+                                    <span class="text-xs text-blue-400 font-medium">${driver.current_cp}</span>
+                                    <span class="iconify text-blue-400" data-icon="lucide:battery-charging" data-width="14" data-height="14" style="stroke-width: 1.5;"></span>
+                                ` : `
+                                    <span class="text-xs text-neutral-500">Idle</span>
+                                `}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+            } catch (error) {
+                document.getElementById('drivers-list').innerHTML = '<div class="text-neutral-600 text-sm text-center py-8">Error</div>';
+            }
+        }
+
+        async function updateStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/status`);
+                if (!response.ok) throw new Error('API Error');
+                const data = await response.json();
+                
+                document.getElementById('stat-total-cps').textContent = data.charging_points.total;
+                document.getElementById('stat-active-cps').textContent = data.charging_points.active;
+                document.getElementById('stat-charging-now').textContent = data.charging_points.charging;
+                document.getElementById('stat-total-drivers').textContent = data.drivers.total;
+                
+                // Show/hide charging indicator
+                document.getElementById('charging-indicator').style.display = data.charging_points.charging > 0 ? 'block' : 'none';
+                
+                const alertsDiv = document.getElementById('weather-alerts');
+                const weatherCard = document.getElementById('weather-card');
+                
+                if (!data.weather_alerts || data.weather_alerts.length === 0) {
+                    alertsDiv.innerHTML = `
+                        <div class="flex flex-col items-center py-4">
+                            <div class="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 flex items-center justify-center mb-3 float-animation">
+                                <span class="iconify text-emerald-400 glow-green" data-icon="lucide:sun" data-width="28" data-height="28" style="stroke-width: 1.5;"></span>
+                            </div>
+                            <div class="text-emerald-400 font-medium text-sm">All Clear</div>
+                            <div class="text-neutral-500 text-xs mt-1">Optimal charging conditions</div>
+                        </div>
+                    `;
+                } else {
+                    alertsDiv.innerHTML = data.weather_alerts.map(alert => `
+                        <div class="bg-gradient-to-r from-amber-500/10 to-red-500/10 border border-amber-500/20 rounded-xl p-4 relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-20 h-20 bg-amber-500/10 rounded-full blur-xl"></div>
+                            <div class="relative flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                                    <span class="iconify text-amber-400" data-icon="lucide:thermometer" data-width="20" data-height="20" style="stroke-width: 1.5;"></span>
+                                </div>
+                                <div>
+                                    <div class="text-amber-400 font-semibold text-sm">${alert.cp_id}</div>
+                                    <div class="text-neutral-400 text-xs">${alert.temperature}°C - High Temp Alert</div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {}
+        }
+
+        async function updateHistory() {
+            try {
+                const response = await fetch(`${API_BASE}/history?limit=5`);
+                if (!response.ok) throw new Error('API Error');
+                const data = await response.json();
+                
+                const historyTable = document.getElementById('history-table');
+                
+                if (!data.history || data.history.length === 0) {
+                    historyTable.innerHTML = '<tr><td colspan="5" class="text-neutral-600 text-center py-12">No history</td></tr>';
+                    return;
+                }
+
+                historyTable.innerHTML = data.history.reverse().map((session, index) => `
+                    <tr class="border-t border-neutral-800/30 group hover:bg-white/5 transition-colors cursor-pointer" style="animation: fadeIn 0.3s ease ${index * 0.1}s both;">
+                        <td class="py-4">
+                            <div class="flex items-center gap-2">
+                                <span class="iconify text-neutral-600" data-icon="lucide:clock" data-width="14" data-height="14" style="stroke-width: 1.5;"></span>
+                                <span class="text-neutral-400">${formatTimestamp(session.timestamp)}</span>
+                            </div>
+                        </td>
+                        <td class="py-4">
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 rounded-md bg-amber-500/20 flex items-center justify-center">
+                                    <span class="iconify text-amber-400" data-icon="lucide:user" data-width="12" data-height="12" style="stroke-width: 1.5;"></span>
+                                </div>
+                                <span class="font-medium">${session.driver_id}</span>
+                            </div>
+                        </td>
+                        <td class="py-4 text-neutral-400">${session.cp_id}</td>
+                        <td class="py-4 text-right">
+                            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-500/10 text-blue-400 text-xs font-medium">
+                                <span class="iconify" data-icon="lucide:zap" data-width="12" data-height="12" style="stroke-width: 1.5;"></span>
+                                ${session.kwh_delivered.toFixed(1)} kWh
+                            </span>
+                        </td>
+                        <td class="py-4 text-right">
+                            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400 text-xs font-medium">
+                                ${session.total_amount.toFixed(2)}€
+                            </span>
+                        </td>
+                    </tr>
+                `).join('');
+                
+            } catch (error) {}
+        }
+
+        async function updateAll() {
+            await Promise.all([updateCPs(), updateDrivers(), updateStatus(), updateHistory()]);
+            document.getElementById('last-update').textContent = `Live · ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+        }
+
+        window.addEventListener('load', () => {
+            updateAll();
+            setInterval(updateAll, 1000);
+        });
+    </script>
+</body>
+</html>
