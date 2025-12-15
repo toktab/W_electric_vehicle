@@ -16,7 +16,7 @@ services:
       dockerfile: Dockerfile.weather
     container_name: cp_weather
     environment:
-      CENTRAL_API_URL: http://IP_CENTRAL:8080/api/weather  # ⚠️ REPLACE IP_CENTRAL
+      CENTRAL_API_URL: http://172.20.41.11:8080/api/weather
     network_mode: host
     stdin_open: true
     tty: true
@@ -28,10 +28,8 @@ services:
       dockerfile: Dockerfile.cp
     container_name: cp_engine_1
     environment:
-      KAFKA_BROKER: IP_CENTRAL:9092  # ⚠️ REPLACE IP_CENTRAL
-    command: python charging_point/ev_cp_engine.py CP-001 40.5 -3.1 0.30 IP_CENTRAL 5000
-    #                                                                    ^^^^^^^^^^
-    #                                                                    ⚠️ REPLACE IP_CENTRAL
+      KAFKA_BROKER: 172.20.41.11:9092
+    command: python charging_point/ev_cp_engine.py CP-001 40.5 -3.1 0.30 172.20.41.11 5000
     ports:
       - "6001:6001"
     network_mode: host
@@ -47,10 +45,8 @@ services:
     depends_on:
       - cp_engine_1
     environment:
-      KAFKA_BROKER: IP_CENTRAL:9092  # ⚠️ REPLACE IP_CENTRAL
-    command: python charging_point/ev_cp_monitor.py CP-001 localhost 6001 IP_CENTRAL 5000
-    #                                                                      ^^^^^^^^^^
-    #                                                                      ⚠️ REPLACE IP_CENTRAL
+      KAFKA_BROKER: 172.20.41.11:9092
+    command: python charging_point/ev_cp_monitor.py CP-001 localhost 6001 172.20.41.11 5000
     network_mode: host
     stdin_open: true
     tty: true
@@ -62,10 +58,8 @@ services:
       dockerfile: Dockerfile.cp
     container_name: cp_engine_2
     environment:
-      KAFKA_BROKER: IP_CENTRAL:9092  # ⚠️ REPLACE IP_CENTRAL
-    command: python charging_point/ev_cp_engine.py CP-002 40.4 -3.2 0.35 IP_CENTRAL 5000
-    #                                                                     ^^^^^^^^^^
-    #                                                                     ⚠️ REPLACE IP_CENTRAL
+      KAFKA_BROKER: 172.20.41.11:9092
+    command: python charging_point/ev_cp_engine.py CP-002 40.4 -3.2 0.35 172.20.41.11 5000
     ports:
       - "6002:6002"
     network_mode: host
@@ -81,10 +75,8 @@ services:
     depends_on:
       - cp_engine_2
     environment:
-      KAFKA_BROKER: IP_CENTRAL:9092  # ⚠️ REPLACE IP_CENTRAL
-    command: python charging_point/ev_cp_monitor.py CP-002 localhost 6002 IP_CENTRAL 5000
-    #                                                                      ^^^^^^^^^^
-    #                                                                      ⚠️ REPLACE IP_CENTRAL
+      KAFKA_BROKER: 172.20.41.11:9092
+    command: python charging_point/ev_cp_monitor.py CP-002 localhost 6002 172.20.41.11 5000
     network_mode: host
     stdin_open: true
     tty: true
