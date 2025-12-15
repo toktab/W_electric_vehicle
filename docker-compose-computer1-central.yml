@@ -1,0 +1,105 @@
+# ============================================================================
+# COMPUTER 1 - Central System (Kafka + Central + Registry + Weather + Frontend)
+# ============================================================================
+# INSTRUCTIONS:
+# 1. Replace IP_CENTRAL with this computer's actual IP address
+# 2. This computer must be started FIRST
+# 3. Build: docker-compose -f docker-compose-computer1-central.yml build
+# 4. Start: docker-compose -f docker-compose-computer1-central.yml up
+# ============================================================================
+
+services:
+  # Zookeeper for Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    container_name: central_zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - central_net
+
+  # Kafka Broker
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    container_name: central_kafka
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://IP_CENTRAL:9092  # ⚠️ REPLACE IP_CENTRAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    ports:
+      - "9092:9092"
+    networks:
+      - central_net
+
+  # EV Registry - REST API
+  registry:
+    build:
+      context: .
+      dockerfile: Dockerfile.registry
+    container_name: central_registry
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./data:/app/data
+    networks:
+      - central_net
+
+  # EV Central - Control Center
+  central:
+    build:
+      context: .
+      dockerfile: Dockerfile.central
+    container_name: central_system
+    depends_on:
+      - kafka
+      - registry
+    environment:
+      KAFKA_BROKER: kafka:9092
+      REGISTRY_URL: http://registry:5001
+    ports:
+      - "5000:5000"  # Socket connection
+      - "8080:8080"  # REST API
+    volumes:
+      - ./data:/app/data
+    networks:
+      - central_net
+    stdin_open: true
+    tty: true
+
+  # Weather Control Office
+  weather:
+    build:
+      context: .
+      dockerfile: Dockerfile.weather
+    container_name: central_weather
+    depends_on:
+      - central
+    environment:
+      CENTRAL_API_URL: http://central:8080/api/weather
+    networks:
+      - central_net
+    stdin_open: true
+    tty: true
+
+  # Web Frontend Dashboard
+  front:
+    build:
+      context: .
+      dockerfile: Dockerfile.front
+    container_name: central_frontend
+    ports:
+      - "8081:80"
+    networks:
+      - central_net
+
+networks:
+  central_net:
+    driver: bridge

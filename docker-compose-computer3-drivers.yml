@@ -1,0 +1,55 @@
+# ============================================================================
+# COMPUTER 3 - Drivers (Manual + Auto)
+# ============================================================================
+# INSTRUCTIONS:
+# 1. Replace IP_CENTRAL with Computer 1's IP address
+# 2. Start AFTER Computer 1 is fully running (wait ~30 seconds)
+# 3. Build: docker-compose -f docker-compose-computer3-drivers.yml build
+# 4. Start: docker-compose -f docker-compose-computer3-drivers.yml up
+# ============================================================================
+
+services:
+  # Manual Driver 1
+  driver_1:
+    build:
+      context: .
+      dockerfile: Dockerfile.driver
+    container_name: driver_1
+    environment:
+      KAFKA_BROKER: IP_CENTRAL:9092  # ⚠️ REPLACE IP_CENTRAL
+    command: python driver/ev_driver.py DRIVER-001 IP_CENTRAL 5000
+    #                                               ^^^^^^^^^^
+    #                                               ⚠️ REPLACE IP_CENTRAL
+    network_mode: host
+    stdin_open: true
+    tty: true
+
+  # Manual Driver 2
+  driver_2:
+    build:
+      context: .
+      dockerfile: Dockerfile.driver
+    container_name: driver_2
+    environment:
+      KAFKA_BROKER: IP_CENTRAL:9092  # ⚠️ REPLACE IP_CENTRAL
+    command: python driver/ev_driver.py DRIVER-002 IP_CENTRAL 5000
+    #                                               ^^^^^^^^^^
+    #                                               ⚠️ REPLACE IP_CENTRAL
+    network_mode: host
+    stdin_open: true
+    tty: true
+
+  # Automated Driver (from file)
+  driver_auto:
+    build:
+      context: .
+      dockerfile: Dockerfile.driver
+    container_name: driver_auto
+    environment:
+      KAFKA_BROKER: IP_CENTRAL:9092  # ⚠️ REPLACE IP_CENTRAL
+    command: sh -c 'sleep 5 && python driver/ev_driver_auto.py DRIVER-AUTO IP_CENTRAL 5000 data/charging_requests.txt'
+    #                                                                       ^^^^^^^^^^
+    #                                                                       ⚠️ REPLACE IP_CENTRAL
+    volumes:
+      - ./data:/app/data
+    network_mode: host

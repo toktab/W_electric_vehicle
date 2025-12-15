@@ -1,0 +1,78 @@
+# ============================================================================
+# COMPUTER 2 - Charging Points (Engine + Monitor)
+# ============================================================================
+# INSTRUCTIONS:
+# 1. Replace IP_CENTRAL with Computer 1's IP address
+# 2. Start AFTER Computer 1 is fully running (wait ~30 seconds)
+# 3. Build: docker-compose -f docker-compose-computer2-chargepoint.yml build
+# 4. Start: docker-compose -f docker-compose-computer2-chargepoint.yml up
+# ============================================================================
+
+services:
+  # Charging Point 1 - Engine
+  cp_engine_1:
+    build:
+      context: .
+      dockerfile: Dockerfile.cp
+    container_name: cp_engine_1
+    environment:
+      KAFKA_BROKER: IP_CENTRAL:9092  # ⚠️ REPLACE IP_CENTRAL
+    command: python charging_point/ev_cp_engine.py CP-001 40.5 -3.1 0.30 IP_CENTRAL 5000
+    #                                                                    ^^^^^^^^^^
+    #                                                                    ⚠️ REPLACE IP_CENTRAL
+    ports:
+      - "6001:6001"
+    network_mode: host
+    stdin_open: true
+    tty: true
+
+  # Charging Point 1 - Monitor
+  cp_monitor_1:
+    build:
+      context: .
+      dockerfile: Dockerfile.cp
+    container_name: cp_monitor_1
+    depends_on:
+      - cp_engine_1
+    environment:
+      KAFKA_BROKER: IP_CENTRAL:9092  # ⚠️ REPLACE IP_CENTRAL
+    command: python charging_point/ev_cp_monitor.py CP-001 localhost 6001 IP_CENTRAL 5000
+    #                                                                      ^^^^^^^^^^
+    #                                                                      ⚠️ REPLACE IP_CENTRAL
+    network_mode: host
+    stdin_open: true
+    tty: true
+
+  # Charging Point 2 - Engine
+  cp_engine_2:
+    build:
+      context: .
+      dockerfile: Dockerfile.cp
+    container_name: cp_engine_2
+    environment:
+      KAFKA_BROKER: IP_CENTRAL:9092  # ⚠️ REPLACE IP_CENTRAL
+    command: python charging_point/ev_cp_engine.py CP-002 40.4 -3.2 0.35 IP_CENTRAL 5000
+    #                                                                     ^^^^^^^^^^
+    #                                                                     ⚠️ REPLACE IP_CENTRAL
+    ports:
+      - "6002:6002"
+    network_mode: host
+    stdin_open: true
+    tty: true
+
+  # Charging Point 2 - Monitor
+  cp_monitor_2:
+    build:
+      context: .
+      dockerfile: Dockerfile.cp
+    container_name: cp_monitor_2
+    depends_on:
+      - cp_engine_2
+    environment:
+      KAFKA_BROKER: IP_CENTRAL:9092  # ⚠️ REPLACE IP_CENTRAL
+    command: python charging_point/ev_cp_monitor.py CP-002 localhost 6002 IP_CENTRAL 5000
+    #                                                                      ^^^^^^^^^^
+    #                                                                      ⚠️ REPLACE IP_CENTRAL
+    network_mode: host
+    stdin_open: true
+    tty: true
