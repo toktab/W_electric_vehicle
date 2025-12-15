@@ -1,5 +1,5 @@
 # ============================================================================
-# COMPUTER 2 - Charging Points (Engine + Monitor)
+# COMPUTER 2 - Charging Points (Engine + Monitor) + WEATHER SERVICE
 # ============================================================================
 # INSTRUCTIONS:
 # 1. Replace IP_CENTRAL with Computer 1's IP address
@@ -9,6 +9,18 @@
 # ============================================================================
 
 services:
+  # Weather Control Office (on PC2)
+  weather:
+    build:
+      context: .
+      dockerfile: Dockerfile.weather
+    container_name: cp_weather
+    environment:
+      CENTRAL_API_URL: http://IP_CENTRAL:8080/api/weather  # ⚠️ REPLACE IP_CENTRAL
+    network_mode: host
+    stdin_open: true
+    tty: true
+
   # Charging Point 1 - Engine
   cp_engine_1:
     build:

@@ -1,11 +1,12 @@
 # ============================================================================
-# COMPUTER 1 - Central System (Kafka + Central + Registry + Weather + Frontend)
+# COMPUTER 1 - Central System (Kafka + Central + Frontend + CP Manager)
 # ============================================================================
 # INSTRUCTIONS:
 # 1. Replace IP_CENTRAL with this computer's actual IP address
-# 2. This computer must be started FIRST
-# 3. Build: docker-compose -f docker-compose-computer1-central.yml build
-# 4. Start: docker-compose -f docker-compose-computer1-central.yml up
+# 2. Replace IP_PC3 with Computer 3's IP address (for Registry)
+# 3. This computer must be started FIRST
+# 4. Build: docker-compose -f docker-compose-computer1-central.yml build
+# 5. Start: docker-compose -f docker-compose-computer1-central.yml up
 # ============================================================================
 
 services:
@@ -39,19 +40,6 @@ services:
     networks:
       - central_net
 
-  # EV Registry - REST API
-  registry:
-    build:
-      context: .
-      dockerfile: Dockerfile.registry
-    container_name: central_registry
-    ports:
-      - "5001:5001"
-    volumes:
-      - ./data:/app/data
-    networks:
-      - central_net
-
   # EV Central - Control Center
   central:
     build:
@@ -60,30 +48,14 @@ services:
     container_name: central_system
     depends_on:
       - kafka
-      - registry
     environment:
       KAFKA_BROKER: kafka:9092
-      REGISTRY_URL: http://registry:5001
+      REGISTRY_URL: http://IP_PC3:5001  # ⚠️ REPLACE IP_PC3 (Registry is on PC3)
     ports:
       - "5000:5000"  # Socket connection
       - "8080:8080"  # REST API
     volumes:
       - ./data:/app/data
-    networks:
-      - central_net
-    stdin_open: true
-    tty: true
-
-  # Weather Control Office
-  weather:
-    build:
-      context: .
-      dockerfile: Dockerfile.weather
-    container_name: central_weather
-    depends_on:
-      - central
-    environment:
-      CENTRAL_API_URL: http://central:8080/api/weather
     networks:
       - central_net
     stdin_open: true
@@ -99,6 +71,23 @@ services:
       - "8081:80"
     networks:
       - central_net
+
+  # CP Manager - Interactive Control Panel
+  cp_manager:
+    build:
+      context: .
+      dockerfile: Dockerfile.manager
+    container_name: central_cp_manager
+    depends_on:
+      - central
+    environment:
+      REGISTRY_URL: http://IP_PC3:5001  # ⚠️ REPLACE IP_PC3 (if CP Manager needs Registry)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock  # Access to Docker
+    networks:
+      - central_net
+    stdin_open: true
+    tty: true
 
 networks:
   central_net:
