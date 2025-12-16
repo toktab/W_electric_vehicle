@@ -1,0 +1,2 @@
+docker rm -f $(docker ps -aq)
+This is command for delete all Docker Containers

@@ -15,17 +15,18 @@ REM Path variables
 set CP_FILE=C:\Users\Administrator\Desktop\electric_vehicle\data\charging_points.txt
 set REG_FILE=C:\Users\Administrator\Desktop\electric_vehicle\data\registry.txt
 
-REM Delete existing files
-del "%CP_FILE%" 2>nul
-del "%REG_FILE%" 2>nul
+REM Create EMPTY data files if they don't exist
+if not exist "%CP_FILE%" (
+    echo. 2> "%CP_FILE%"
+    echo [92m✅ Created empty charging_points.txt[0m
+)
 
-REM Create fresh charging_points.txt
-echo {"cp_id": "CP-001", "latitude": "40.5", "longitude": "-3.1", "price_per_kwh": 0.3, "state": "ACTIVATED", "registered_at": "2025-12-08T04:25:18.167222"} > "%CP_FILE%"
+if not exist "%REG_FILE%" (
+    echo. 2> "%REG_FILE%"
+    echo [92m✅ Created empty registry.txt[0m
+)
 
-REM Create fresh registry.txt
-echo {"cp_id": "CP-001", "username": "cp_user_5f63f88d", "password_hash": "f7ad32406fae29267550395bfba98dffd6490b1a09c41fdcf050186c2c5caf75", "latitude": "40.5", "longitude": "-3.1", "price_per_kwh": 0.3, "registered_at": "2025-11-30T23:42:28.447056"} > "%REG_FILE%"
-
-echo [92m✅ Data files reset successfully![0m
+echo [93m⚠️  Note: System starts with ZERO CPs. Use CP Manager to create them.[0m
 echo.
 
 REM Step 1: Build all Docker images
