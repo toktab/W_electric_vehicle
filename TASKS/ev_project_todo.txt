@@ -1,0 +1,351 @@
+# 🚗 EV Charging System - Project Status & TODO List
+
+**Last Updated:** December 16, 2025  
+**Project:** Distributed Electric Vehicle Charging Management System  
+**Course:** Distributed Systems (SD) 2025/26
+
+---
+
+## 📋 WHAT IS ALREADY DONE ✅
+
+### Release 1 (Sockets, Kafka, Basic Functionality)
+- ✅ **Central System (EV_Central)** - Complete
+  - Socket server for CP and Driver connections
+  - Registration and authentication
+  - Charging authorization logic
+  - Real-time status monitoring
+  - File-based storage (charging_points.txt, drivers.txt, charging_history.txt)
+  - Kafka event publishing
+  - REST API for frontend
+
+- ✅ **Charging Point (CP)** - Complete
+  - **Engine (EV_CP_E)** - Manages actual charging
+  - **Monitor (EV_CP_M)** - Health monitoring and fault detection
+  - Socket communication with Central
+  - Real-time supply updates (every second)
+  - Fault simulation capability
+  - Beautiful UI with progress indicators
+
+- ✅ **Driver Application** - Complete
+  - Manual driver (EV_Driver) - Interactive menu
+  - Auto driver (EV_Driver_Auto) - File-based automation
+  - Charging request and status tracking
+  - Real-time updates during charging
+
+- ✅ **Protocol & Communication**
+  - STX/DATA/ETX/LRC message framing
+  - XOR checksum validation
+  - Socket-based communication
+  - Kafka integration for event streaming
+
+- ✅ **Docker Deployment**
+  - All Dockerfiles created (Central, CP, Driver, Registry, Weather, Front)
+  - docker-compose.yml with all services
+  - Distributed deployment guides for 3 PCs
+
+- ✅ **Data Persistence**
+  - File-based storage system (no database needed)
+  - Charging history tracking
+  - Driver statistics
+
+---
+
+### Release 2 (REST APIs, Security, Weather)
+- ✅ **Registry (EV_Registry)** - Complete
+  - REST API for CP registration
+  - Auto-generated credentials (username + password)
+  - Password hashing (SHA-256)
+  - CP listing and verification endpoints
+  - CORS enabled for browser access
+
+- ✅ **Weather Service (EV_W)** - Complete
+  - OpenWeather API integration
+  - Temperature monitoring (every 4 seconds)
+  - Cold weather alerts (temp ≤ 0°C)
+  - Automatic CP disable/enable based on weather
+  - REST API communication with Central
+
+- ✅ **Frontend Dashboard** - Complete
+  - Real-time system status display
+  - Charging point visualization
+  - Driver tracking
+  - Weather alerts
+  - Charging history
+  - Beautiful modern UI with animations
+
+- ✅ **CP Manager** - Complete
+  - Web-based control panel (cp_manager.html)
+  - Create/Delete CPs dynamically
+  - View all registered CPs
+  - Docker container management interface
+
+---
+
+## ⚠️ WHAT IS MISSING / NEEDS WORK
+
+### 🔴 CRITICAL - Required for Grading
+
+#### 1. **SECURE AUTHENTICATION BETWEEN CP AND CENTRAL** ❌
+**Status:** NOT IMPLEMENTED  
+**What's needed:**
+- CPs must authenticate with Central using credentials from Registry
+- Currently CPs just register directly without credential verification
+- Need to implement:
+  ```
+  1. CP_Monitor → Registry (get credentials)
+  2. CP_Monitor → Central (authenticate with username/password)
+  3. Central → Registry (verify credentials)
+  4. If valid → Central returns symmetric encryption key
+  ```
+
+**Files to modify:**
+- `charging_point/ev_cp_monitor.py` - Add Registry connection for credentials
+- `central/ev_central.py` - Add authentication verification with Registry
+- `shared/protocol.py` - Add AUTHENTICATE message type
+
+---
+
+#### 2. **SYMMETRIC ENCRYPTION BETWEEN CP AND CENTRAL** ❌
+**Status:** NOT IMPLEMENTED  
+**What's needed:**
+- All messages between CP_Engine and Central must be encrypted
+- Each CP gets unique symmetric key after authentication
+- Use AES encryption (or similar)
+- Messages: SUPPLY_UPDATE, SUPPLY_END, AUTHORIZE, DENY, etc.
+
+**Files to modify:**
+- `charging_point/ev_cp_engine.py` - Encrypt all outgoing messages
+- `central/ev_central.py` - Decrypt incoming messages from CPs
+- Create `shared/encryption.py` - Encryption utilities
+
+**Implementation hint:**
+```python
+from cryptography.fernet import Fernet
+
+# Generate key per CP during authentication
+key = Fernet.generate_key()
+cipher = Fernet(key)
+
+# Encrypt
+encrypted = cipher.encrypt(message.encode())
+
+# Decrypt
+decrypted = cipher.decrypt(encrypted).decode()
+```
+
+---
+
+#### 3. **HTTPS/TLS FOR REGISTRY API** ❌
+**Status:** Currently HTTP only  
+**What's needed:**
+- Registry API must use HTTPS
+- Self-signed SSL certificate is acceptable
+- Secure channel between CP_Monitor and Registry
+
+**Files to modify:**
+- `registry/ev_registry.py` - Add SSL context
+- Generate SSL certificate (self-signed)
+
+---
+
+#### 4. **AUDIT LOG IN CENTRAL** ⚠️
+**Status:** PARTIALLY DONE (Kafka events exist, but no structured audit file)  
+**What's needed:**
+- Structured audit log with:
+  - Date/Time of event
+  - Who (IP address of CP/Driver)
+  - What action (authentication, charge start/stop, fault, etc.)
+  - Parameters (amounts, kWh, etc.)
+- Save to `data/audit_log.txt`
+
+**Files to modify:**
+- `central/ev_central.py` - Add audit logging function
+- Create `shared/audit_logger.py`
+
+**Example format:**
+```
+2025-12-16T10:30:45 | 192.168.1.100 | CP-001 | AUTHENTICATION_SUCCESS | user=cp_user_5f63f88d
+2025-12-16T10:31:12 | 192.168.1.101 | DRIVER-001 | CHARGE_REQUESTED | cp=CP-001, kwh=10
+```
+
+---
+
+#### 5. **KEY RESTORATION/REVOCATION MECHANISM** ⚠️
+**Status:** Menu option exists but doesn't work properly  
+**What's needed:**
+- Central admin can revoke encryption keys for a CP
+- CP must re-authenticate to get new key
+- Messages with old key should be rejected
+
+**Files to modify:**
+- `central/ev_central.py` - Implement key revocation properly
+- Store keys in memory with expiration/revocation flag
+
+---
+
+### 🟡 IMPORTANT - Recommended
+
+#### 6. **REGISTRY POLLING IS INEFFICIENT** ⚠️
+**Status:** Works but polls every 10 seconds  
+**Better solution:**
+- Registry should push notifications to Central when CP registers/unregisters
+- Or use webhooks
+
+---
+
+#### 7. **ERROR HANDLING IN FRONTEND** ⚠️
+**Status:** Basic error handling exists  
+**Improvements needed:**
+- Better offline detection
+- Retry logic for failed API calls
+- User-friendly error messages
+
+---
+
+#### 8. **CP MANAGER DOCKER INTEGRATION** ⚠️
+**Status:** Requires manual Docker CLI access  
+**Note:** CP Manager needs Docker socket access - this is OK for lab environment
+
+---
+
+#### 9. **RESILIENCE TESTING** ❌
+**Status:** Not systematically tested  
+**Need to verify:**
+- Central crash → CPs continue locally
+- CP_Engine crash → Monitor notifies Central
+- Driver crash during charge → Session continues
+- Random component failures
+
+---
+
+### 🟢 OPTIONAL - Nice to Have
+
+#### 10. **PERSISTENT KAFKA TOPICS** 
+- Currently topics are recreated on restart
+
+#### 11. **BETTER PASSWORD STORAGE IN REGISTRY**
+- Currently SHA-256, could use bcrypt/argon2
+
+#### 12. **REAL-TIME DASHBOARD UPDATES**
+- Could use WebSockets instead of polling
+
+---
+
+## 🔐 REGARDING THE PASSWORD AUTHENTICATION YOU MENTIONED
+
+### Analysis:
+Looking at your code, I found **PARTIAL IMPLEMENTATION**:
+
+**What EXISTS:**
+1. **Registry generates credentials** (`registry/ev_registry.py`):
+   ```python
+   username = f"cp_user_{secrets.token_hex(4)}"  # e.g., cp_user_5f63f88d
+   password = secrets.token_urlsafe(16)          # Long random password
+   password_hash = hashlib.sha256(password.encode()).hexdigest()
+   ```
+
+2. **Registry stores in `data/registry.txt`:**
+   ```json
+   {"cp_id": "CP-001", "username": "cp_user_5f63f88d", "password_hash": "f7ad...", ...}
+   ```
+
+3. **Registry has `/verify` endpoint** to check credentials
+
+**What is MISSING:**
+❌ CPs don't actually USE these credentials
+❌ CPs don't authenticate before connecting to Central
+❌ No file that checks password on startup
+
+---
+
+### 🔧 WHAT YOU NEED TO DO:
+
+#### Option A: System-Level Password Protection
+Create a file that prevents the system from starting without correct password:
+
+**Create: `system_password.txt`**
+```
+SYSTEM_PASSWORD=your-super-long-generated-password-here-save-this
+```
+
+**Modify: `start.system.bat`**
+```batch
+@echo off
+echo ================================================
+echo   EV Charging System - Startup Script
+echo ================================================
+
+REM Check system password
+set /p STORED_PASSWORD=<system_password.txt
+set /p INPUT_PASSWORD=Enter system password: 
+
+if NOT "%INPUT_PASSWORD%"=="%STORED_PASSWORD%" (
+    echo [91mERROR: Invalid password![0m
+    pause
+    exit /b 1
+)
+
+echo [92mPassword correct! Starting system...[0m
+REM ... rest of startup script
+```
+
+#### Option B: CP Authentication (RECOMMENDED - follows project requirements)
+**This is what the correction guide requires!**
+
+1. **When CP starts → Get credentials from Registry**
+2. **CP authenticates with Central using those credentials**
+3. **Central verifies with Registry**
+4. **If valid → Central gives CP encryption key**
+
+---
+
+## 📝 YOUR ACTION PLAN (Priority Order)
+
+### WEEK 1: Critical Security Features
+- [ ] **Day 1-2:** Implement CP authentication flow
+  - Modify `ev_cp_monitor.py` to fetch credentials from Registry
+  - Modify `ev_central.py` to verify credentials
+  - Test authentication success/failure
+
+- [ ] **Day 3-4:** Implement symmetric encryption
+  - Create `shared/encryption.py` with AES/Fernet
+  - Encrypt CP→Central messages
+  - Decrypt Central→CP messages
+  - Test encrypted communication
+
+- [ ] **Day 5:** Add audit logging
+  - Create structured audit log
+  - Log all important events (auth, charges, faults)
+  - Test log format
+
+### WEEK 2: Testing & Polish
+- [ ] **Day 1:** HTTPS for Registry (if required)
+- [ ] **Day 2:** Key revocation mechanism
+- [ ] **Day 3-4:** Resilience testing
+  - Kill Central → verify CPs handle it
+  - Kill CP_Engine → verify Monitor detects
+  - Kill Driver mid-charge → verify session completes
+- [ ] **Day 5:** Documentation & final deployment
+
+### WEEK 3: Deployment & Correction
+- [ ] **Day 1-2:** Deploy on 3 physical PCs
+- [ ] **Day 3:** Practice correction scenarios
+- [ ] **Day 4:** Final testing
+- [ ] **Correction day:** Be ready to explain everything!
+
+---
+
+## 🎯 FOR CORRECTION DAY
+
+### You MUST be able to:
+1. ✅ Deploy on 3 different computers (you have deployment guides)
+2. ⚠️ Explain authentication flow (NEEDS IMPLEMENTATION)
+3. ⚠️ Explain encryption between CP↔Central (NEEDS IMPLEMENTATION)
+4. ✅ Create/Delete CPs dynamically (you have CP Manager)
+5. ⚠️ Show audit log (NEEDS PROPER IMPLEMENTATION)
+6. ✅ Demonstrate resilience (random crashes)
+7. ⚠️ Explain security mechanisms (PARTIALLY DONE)
+
+### Teacher will test:
+- Stop Central → System continues? ✅ (mostly works)
+- Stop CP_Engine →
