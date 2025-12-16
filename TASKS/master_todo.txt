@@ -1,0 +1,180 @@
+EV CHARGING PROJECT - MASTER TODO LIST
+
+Student: Your Name
+Deadline: Week of December 16, 2025
+Status: IN PROGRESS
+
+CURRENT BLOCKING BUG (FIX FIRST!)
+==================================
+
+BUG-001: CP Persistence Problem
+Status: NOT FIXED
+Priority: CRITICAL - FIX BEFORE ANYTHING ELSE
+File: BUG-001-CP-PERSISTENCE.txt
+
+Problem:
+- CP-001 always exists on startup (hardcoded somewhere)
+- When you create CP-002 or CP-003, they work fine
+- BUT when you restart the system, they show as "DISCONNECTED"
+- They don't reconnect automatically
+
+Why this breaks everything:
+- Can't test multiple CPs properly
+- Can't demonstrate scalability
+- Can't show dynamic CP creation/deletion working correctly
+
+Estimated time: 2-3 hours
+
+CRITICAL TASKS (Required for passing)
+======================================
+
+TASK 1: Fix CP Authentication Flow
+Status: NOT STARTED
+Priority: CRITICAL
+File: TASK1-AUTHENTICATION.txt
+Estimated time: 2-3 days
+
+What's wrong:
+- CPs currently skip Registry and connect directly to Central
+- No credential verification happens
+- No security at all
+
+What you need:
+- CP_Monitor must fetch credentials from Registry first
+- CP_Monitor authenticates with Central using those credentials
+- Central verifies with Registry before allowing CP to operate
+
+TASK 2: Implement Symmetric Encryption
+Status: NOT STARTED
+Priority: CRITICAL
+File: TASK2-ENCRYPTION.txt
+Estimated time: 3-4 days
+
+What's wrong:
+- All messages between CP and Central are plain text
+- Anyone can read/modify messages
+- Zero security
+
+What you need:
+- After authentication, Central gives each CP a unique encryption key
+- CP_Engine encrypts all messages to Central
+- Central decrypts all messages from CPs
+- Each CP has different key
+
+TASK 3: Create Proper Audit Log
+Status: NOT STARTED
+Priority: CRITICAL
+File: TASK3-AUDIT-LOG.txt
+Estimated time: 1 day
+
+What's wrong:
+- No audit log file exists
+- Kafka events exist but teacher can't see them
+- No IP address tracking
+
+What you need:
+- Create data/audit_log.txt file
+- Log every important action with: timestamp, IP, who, what, parameters
+- Teacher must be able to open this file and see everything that happened
+
+TASK 4: Add HTTPS to Registry
+Status: NOT STARTED
+Priority: HIGH
+File: TASK4-HTTPS-REGISTRY.txt
+Estimated time: 1 day
+
+What's wrong:
+- Registry uses HTTP (insecure)
+- Anyone can intercept credentials
+- Correction guide requires HTTPS/SSL
+
+What you need:
+- Generate self-signed SSL certificate
+- Make Registry API run on HTTPS
+- Update CP_Monitor to connect via HTTPS
+
+TASK 5: Fix Key Revocation Mechanism
+Status: PARTIALLY DONE
+Priority: MEDIUM
+File: TASK5-KEY-REVOCATION.txt
+Estimated time: 1 day
+
+What's wrong:
+- Admin menu has "revoke key" option but doesn't work
+- CP doesn't realize its key was revoked
+- No re-authentication happens
+
+What you need:
+- When admin revokes key, CP's messages get rejected
+- CP sees "bad key" error
+- CP must re-authenticate to get new key
+- All without restarting anything
+
+RECOMMENDED WORK SCHEDULE
+==========================
+
+Week 1 (Now - Dec 16):
+- Day 1: Fix CP persistence bug (BUG-001)
+- Day 2-3: Implement authentication flow (TASK 1)
+- Day 4-6: Implement encryption (TASK 2)
+- Day 7: Create audit log (TASK 3)
+
+Week 2 (Dec 16-23):
+- Day 1: Add HTTPS to Registry (TASK 4)
+- Day 2: Fix key revocation (TASK 5)
+- Day 3-4: Test everything together
+- Day 5-6: Deploy on 3 computers and practice demonstration
+- Day 7: Final testing and prepare for correction
+
+PROGRESS TRACKER
+=================
+
+Task              Status          Time Spent    Notes
+BUG-001           Not Started     0h            MUST DO FIRST
+TASK 1            Not Started     0h            
+TASK 2            Not Started     0h            
+TASK 3            Not Started     0h            
+TASK 4            Not Started     0h            
+TASK 5            Not Started     0h            
+
+Legend:
+- Not Started
+- In Progress
+- Completed
+- Blocked/Issues
+
+WHAT TEACHER WILL CHECK
+========================
+
+During correction, the teacher will:
+1. ✅ Ask you to deploy on 3 different computers
+2. ❌ Ask you to explain authentication flow (CAN'T - not implemented)
+3. ❌ Ask to see encrypted messages (CAN'T - not implemented)
+4. ❌ Ask to see audit log file (CAN'T - doesn't exist)
+5. ✅ Ask to create/delete CPs dynamically (works if bug fixed)
+6. ❌ Ask about key revocation (doesn't work properly)
+7. ✅ Test resilience by killing processes randomly (mostly works)
+8. ❌ Check HTTPS on Registry (not implemented)
+
+Current score estimate: 3-4 out of 10 points
+After fixing everything: 8-9 out of 10 points
+
+NOTES TO REMEMBER
+=================
+
+- Don't panic - you have good foundation, just missing security
+- Fix the CP bug FIRST before doing anything else
+- Authentication must come before encryption (can't encrypt without keys)
+- Test each task thoroughly before moving to next one
+- Keep this file updated with your progress
+
+IF YOU GET STUCK
+================
+
+1. Re-read the task file for that specific task
+2. Check the correction guide requirements
+3. Test in small steps (don't try to do everything at once)
+4. If a task blocks you for more than 4 hours, move to next one and come back later
+
+Last Updated: December 16, 2025
+Next Review: After fixing BUG-001
