@@ -102,7 +102,7 @@ def create_cp():
         return
     
     cp_port = 6000 + cp_num
-    network = "electric_vehicle_evcharging_net"
+    network = "w_electric_vehicle_evcharging_net"
     
     # Launch Engine
     print(f"   🔧 Starting CP Engine...")
