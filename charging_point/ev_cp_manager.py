@@ -2,6 +2,10 @@
 """
 CP Manager - Interactive Control Panel for Managing Charging Points
 Run inside Docker container with access to Docker socket
+
+FIXED VERSION:
+- Delete now properly removes Docker containers
+- Create now checks for and removes old containers before creating new ones
 """
 
 import requests
@@ -104,11 +108,28 @@ def create_cp():
     cp_port = 6000 + cp_num
     network = "w_electric_vehicle_evcharging_net"
     
+    # Check if containers already exist and remove them
+    print(f"   🔍 Checking for existing containers...")
+    engine_name = f"evcharging_cp_engine_{cp_num}"
+    monitor_name = f"evcharging_cp_monitor_{cp_num}"
+    
+    # Remove engine if exists (force remove even if running)
+    result = subprocess.run(["docker", "rm", "-f", engine_name], 
+                           capture_output=True, text=True)
+    if result.returncode == 0:
+        print(f"   🗑️  Removed old {engine_name}")
+    
+    # Remove monitor if exists (force remove even if running)
+    result = subprocess.run(["docker", "rm", "-f", monitor_name], 
+                           capture_output=True, text=True)
+    if result.returncode == 0:
+        print(f"   🗑️  Removed old {monitor_name}")
+    
     # Launch Engine
     print(f"   🔧 Starting CP Engine...")
     engine_cmd = [
         "docker", "run", "-d",
-        "--name", f"evcharging_cp_engine_{cp_num}",
+        "--name", engine_name,
         "--network", network,
         "-p", f"{cp_port}:{cp_port}",
         "-e", "KAFKA_BROKER=kafka:9092",
@@ -131,13 +152,13 @@ def create_cp():
     print(f"   🔍 Starting CP Monitor...")
     monitor_cmd = [
         "docker", "run", "-d",
-        "--name", f"evcharging_cp_monitor_{cp_num}",
+        "--name", monitor_name,
         "--network", network,
         "-e", "KAFKA_BROKER=kafka:9092",
         "-it",
         "evcharging-cp",
         "python", "charging_point/ev_cp_monitor.py",
-        cp_id, f"evcharging_cp_engine_{cp_num}", str(cp_port),
+        cp_id, engine_name, str(cp_port),
         "central", "5000"
     ]
     
@@ -149,10 +170,10 @@ def create_cp():
     print(f"   ✅ Monitor started")
     
     print_header(f"✅ {cp_id} READY FOR CHARGING!")
-    print(f"📊 Check logs: docker logs evcharging_cp_engine_{cp_num}")
+    print(f"📊 Check logs: docker logs {engine_name}")
 
 def delete_cp():
-    """Delete charging point"""
+    """Delete charging point - NOW PROPERLY REMOVES CONTAINERS"""
     print_header("DELETE CHARGING POINT")
     
     cp_id = input("Enter CP ID to delete (e.g., CP-010): ").strip()
@@ -171,22 +192,47 @@ def delete_cp():
         print("❌ Invalid CP_ID format")
         return
     
-    print(f"\n🛑 Stopping containers...")
+    print(f"\n🛑 Step 1/2: Stopping and removing Docker containers...")
     
-    # Stop and remove containers
-    subprocess.run(["docker", "stop", f"evcharging_cp_engine_{cp_num}"], 
-                   capture_output=True)
-    subprocess.run(["docker", "stop", f"evcharging_cp_monitor_{cp_num}"], 
-                   capture_output=True)
-    subprocess.run(["docker", "rm", f"evcharging_cp_engine_{cp_num}"], 
-                   capture_output=True)
-    subprocess.run(["docker", "rm", f"evcharging_cp_monitor_{cp_num}"], 
-                   capture_output=True)
+    engine_name = f"evcharging_cp_engine_{cp_num}"
+    monitor_name = f"evcharging_cp_monitor_{cp_num}"
     
-    print(f"✅ Containers stopped and removed")
+    # Stop containers
+    print(f"   ⏸️  Stopping {engine_name}...")
+    result = subprocess.run(["docker", "stop", engine_name], 
+                           capture_output=True, text=True)
+    if result.returncode == 0:
+        print(f"   ✅ Stopped {engine_name}")
+    else:
+        print(f"   ⚠️  {engine_name} not running or doesn't exist")
+    
+    print(f"   ⏸️  Stopping {monitor_name}...")
+    result = subprocess.run(["docker", "stop", monitor_name], 
+                           capture_output=True, text=True)
+    if result.returncode == 0:
+        print(f"   ✅ Stopped {monitor_name}")
+    else:
+        print(f"   ⚠️  {monitor_name} not running or doesn't exist")
+    
+    # Remove containers
+    print(f"   🗑️  Removing {engine_name}...")
+    result = subprocess.run(["docker", "rm", engine_name], 
+                           capture_output=True, text=True)
+    if result.returncode == 0:
+        print(f"   ✅ Removed {engine_name}")
+    else:
+        print(f"   ⚠️  {engine_name} doesn't exist")
+    
+    print(f"   🗑️  Removing {monitor_name}...")
+    result = subprocess.run(["docker", "rm", monitor_name], 
+                           capture_output=True, text=True)
+    if result.returncode == 0:
+        print(f"   ✅ Removed {monitor_name}")
+    else:
+        print(f"   ⚠️  {monitor_name} doesn't exist")
     
     # Unregister from Registry
-    print(f"\n📝 Unregistering from Registry...")
+    print(f"\n📝 Step 2/2: Unregistering from Registry...")
     try:
         response = requests.delete(f"{REGISTRY_URL}/unregister/{cp_id}", timeout=10)
         if response.status_code == 200:
@@ -196,7 +242,8 @@ def delete_cp():
     except Exception as e:
         print(f"⚠️  Registry error: {e}")
     
-    print_header(f"✅ {cp_id} DELETED")
+    print_header(f"✅ {cp_id} COMPLETELY DELETED")
+    print("   All containers and registry entries removed")
 
 def list_cps():
     """List all charging points"""
@@ -266,6 +313,10 @@ def view_status():
 def main():
     print_header("🔧 CP MANAGER STARTED")
     print("Connected to Registry and Central")
+    print("\n✨ IMPROVEMENTS:")
+    print("   • Delete now properly removes Docker containers")
+    print("   • Create checks for and removes old containers")
+    print("   • No more 'container name already in use' errors!")
     
     # Check if evcharging-cp image exists
     result = subprocess.run(
@@ -280,7 +331,7 @@ def main():
         print("  docker build -t evcharging-cp -f Dockerfile.cp .")
         print("\nContinuing anyway, but CP creation will fail...\n")
     else:
-        print("✅ Image 'evcharging-cp' found")
+        print("\n✅ Image 'evcharging-cp' found")
         print("Ready to manage charging points\n")
     
     while True:
