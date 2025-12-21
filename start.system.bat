@@ -192,14 +192,8 @@ echo   Current Status: %CP_COUNT% CP(s) running
 echo ================================================
 echo.
 
-REM Ask if user wants to view logs
-set /p VIEW_LOGS="View live logs? (y/n): "
-if /i "%VIEW_LOGS%"=="y" (
-    docker-compose logs -f
-) else (
-    echo.
-    echo [92mSystem is running in background![0m
-    echo.
-)
-
-endlocal
+REM Keep showing logs and CMD open indefinitely
+:show_logs
+docker-compose logs -f
+REM If logs exit, just loop again
+goto show_logs
