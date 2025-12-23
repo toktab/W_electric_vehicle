@@ -284,6 +284,115 @@ class EVCPMonitor:
             print(f"[{self.cp_id} Monitor] ❌ Authentication error: {e}")
             return False
 
+    def _listen_central(self):
+        """Listen for driver notifications from CENTRAL"""
+        buffer = b''
+        try:
+            while self.running:
+                try:
+                    data = self.central_socket.recv(4096)
+                    if not data:
+                        break
+
+                    buffer += data
+
+                    while len(buffer) > 0:
+                        message, is_valid = Protocol.decode(buffer)
+
+                        if is_valid:
+                            etx_pos = buffer.find(b'\x03')
+                            buffer = buffer[etx_pos + 2:]
+
+                            fields = Protocol.parse_message(message)
+                            msg_type = fields[0]
+
+                            # Handle driver start notification
+                            if msg_type == "DRIVER_START":
+                                driver_id = fields[2]
+                                with self.lock:
+                                    self.current_driver = driver_id
+                                    self.charging_active = True
+                                    self.charge_start_time = datetime.now()
+                                    self.charge_kwh_needed = 10
+                                    self.charge_progress = 0
+                                    self.last_progress_update = 0
+                                    self.charging_complete = False
+                                
+                                print(f"\n╔{'═'*68}╗")
+                                print(f"║{' '*68}║")
+                                print(f"║  🚗  DRIVER CONNECTED - CHARGING SESSION STARTED  {'⚡':<22}║")
+                                print(f"║{' '*68}║")
+                                print(f"╠{'═'*68}╣")
+                                print(f"║  📅 Start Time: {self.charge_start_time.strftime('%H:%M:%S'):<50}║")
+                                print(f"║  ⏱️  Estimated Duration: ~14 seconds{' '*32}║")
+                                print(f"║  🔋 Target: 100%{' '*52}║")
+                                print(f"╚{'═'*68}╝\n")
+                                
+                                # Start progress monitoring thread
+                                progress_thread = threading.Thread(
+                                    target=self._monitor_progress,
+                                    daemon=True
+                                )
+                                progress_thread.start()
+
+                            # Handle charging complete notification
+                            elif msg_type == "CHARGING_COMPLETE":
+                                with self.lock:
+                                    self.charging_complete = True
+                                    self.charge_progress = 100
+                                
+                                print(f"\n╔{'═'*68}╗")
+                                print(f"║{' '*68}║")
+                                print(f"║  🎉  CHARGING COMPLETE - 100% REACHED!  {'🔋':<26}║")
+                                print(f"║{' '*68}║")
+                                print(f"╚{'═'*68}╝\n")
+
+                            # Handle driver stop notification (unplugged)
+                            elif msg_type == "DRIVER_STOP":
+                                with self.lock:
+                                    was_charging = self.charging_active or self.charging_complete
+                                    final_progress = self.charge_progress
+                                    self.current_driver = None
+                                    self.charging_active = False
+                                    self.charging_complete = False
+                                    self.charge_progress = 0
+                                
+                                if was_charging:
+                                    if final_progress >= 100:
+                                        # Full charge completed
+                                        print(f"\n╔{'═'*68}╗")
+                                        print(f"║{' '*68}║")
+                                        print(f"║  ✅  VEHICLE UNPLUGGED - SESSION COMPLETE  {'🔌':<24}║")
+                                        print(f"║{' '*68}║")
+                                        print(f"╠{'═'*68}╣")
+                                        print(f"║  🔋 Final Charge: 100%{' '*44}║")
+                                        print(f"║  💚 Battery: Full{' '*50}║")
+                                        print(f"║  🎫 Ticket: Sent{' '*50}║")
+                                        print(f"╚{'═'*68}╝\n")
+                                    else:
+                                        # Early disconnect
+                                        print(f"\n╔{'═'*68}╗")
+                                        print(f"║{' '*68}║")
+                                        print(f"║  ⚠️   VEHICLE UNPLUGGED - EARLY DISCONNECT  {'🔌':<22}║")
+                                        print(f"║{' '*68}║")
+                                        print(f"╠{'═'*68}╣")
+                                        print(f"║  🔋 Final Charge: {final_progress}%{' '*(45 - len(str(final_progress)))}║")
+                                        print(f"║  ⚡ Status: Partial charge{' '*42}║")
+                                        print(f"║  🎫 Ticket: Sent{' '*50}║")
+                                        print(f"╚{'═'*68}╝\n")
+
+                        else:
+                            break
+
+                except socket.timeout:
+                    continue
+                except Exception as e:
+                    print(f"[{self.cp_id} Monitor] Listener error: {e}")
+                    break
+
+        except Exception as e:
+            print(f"[{self.cp_id} Monitor] CENTRAL connection lost: {e}")
+
     def _monitor_progress(self):
         """Monitor and display charging progress"""
         while self.running:
