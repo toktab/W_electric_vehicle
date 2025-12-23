@@ -51,7 +51,7 @@ class EVCPEngine:
             self.central_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.central_socket.connect((self.central_host, self.central_port))
 
-            # Register with CENTRAL
+            # Register with CENTRAL (Engine registers separately from Monitor auth)
             register_msg = Protocol.encode(
                 Protocol.build_message(
                     "REGISTER", "CP", self.cp_id,

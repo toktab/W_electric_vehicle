@@ -120,3 +120,7 @@ class MessageTypes:
     HEALTH_CHECK = "HEALTH_CHECK"           # Health check request
     HEALTH_OK = "HEALTH_OK"                 # Health check response OK
     HEALTH_KO = "HEALTH_KO"                 # Health check response KO
+
+    AUTHENTICATE = "AUTHENTICATE"      # CP → Central (with credentials)
+    AUTHENTICATED = "AUTHENTICATED"    # Central → CP (success with key)
+    

@@ -34,7 +34,9 @@ class EVCentral:
         self.drivers = {}             
         self.active_connections = {}  
         self.entity_to_socket = {}    
-        self.monitors = {}            
+        self.monitors = {}     
+
+        self.cp_encryption_keys = {}       
 
         # Kafka client
         self.kafka = KafkaClient("EV_Central")
@@ -54,6 +56,148 @@ class EVCentral:
         
         # Load existing CPs from file on startup
         self._load_stored_cps()
+
+    def _handle_authenticate(self, fields, client_socket, client_id):
+        """
+        Handle CP authentication request
+        Message format: AUTHENTICATE#cp_id#username#password
+        """
+        if len(fields) < 4:
+            print(f"[EV_Central] ⚠️  Invalid AUTHENTICATE message: {fields}")
+            return
+        
+        cp_id = fields[1]
+        username = fields[2]
+        password = fields[3]
+        
+        print(f"\n[EV_Central] 🔐 Authentication request from {cp_id}")
+        print(f"[EV_Central]    Username: {username}")
+        print(f"[EV_Central]    Verifying with Registry...")
+        
+        # Verify credentials with Registry
+        try:
+            verify_response = requests.post(
+                f"{REGISTRY_URL}/verify",
+                json={
+                    "cp_id": cp_id,
+                    "username": username,
+                    "password": password
+                },
+                timeout=10
+            )
+            
+            if verify_response.status_code == 200:
+                verify_data = verify_response.json()
+                
+                if verify_data.get("valid", False):
+                    # Credentials are valid!
+                    print(f"[EV_Central] ✅ Credentials VALID for {cp_id}")
+                    
+                    # Generate encryption key (for TASK 2)
+                    # For now, just a placeholder
+                    import secrets
+                    encryption_key = secrets.token_hex(16)
+                    
+                    # Store encryption key
+                    with self.lock:
+                        self.cp_encryption_keys[cp_id] = encryption_key
+                    
+                    print(f"[EV_Central] 🔑 Generated encryption key for {cp_id}")
+                    
+                    # Register CP in system (if not already)
+                    with self.lock:
+                        if cp_id not in self.charging_points:
+                            # Get CP details from Registry
+                            try:
+                                list_response = requests.get(f"{REGISTRY_URL}/list", timeout=5)
+                                if list_response.status_code == 200:
+                                    registry_data = list_response.json()
+                                    for cp_data in registry_data.get("charging_points", []):
+                                        if cp_data['cp_id'] == cp_id:
+                                            self.charging_points[cp_id] = {
+                                                "state": CP_STATES["ACTIVATED"],
+                                                "location": (cp_data['latitude'], cp_data['longitude']),
+                                                "price_per_kwh": cp_data.get('price_per_kwh', 0.30),
+                                                "current_driver": None,
+                                                "kwh_delivered": 0,
+                                                "amount_euro": 0,
+                                                "session_start": None,
+                                                "charging_complete": False
+                                            }
+                                            break
+                            except:
+                                pass
+                        
+                        # Always update to ACTIVATED on successful auth
+                        if cp_id in self.charging_points:
+                            self.charging_points[cp_id]["state"] = CP_STATES["ACTIVATED"]
+                        
+                        # Map socket
+                        self.entity_to_socket[cp_id] = client_socket
+                    
+                    # Send AUTHENTICATED response
+                    response = Protocol.encode(
+                        Protocol.build_message(
+                            MessageTypes.AUTHENTICATED,
+                            cp_id,
+                            encryption_key
+                        )
+                    )
+                    
+                    client_socket.send(response)
+                    print(f"[EV_Central] 📤 Sent AUTHENTICATED to {cp_id}\n")
+                    
+                    # Kafka event
+                    self.kafka.publish_event("system_events", "CP_AUTHENTICATED", {
+                        "cp_id": cp_id,
+                        "username": username
+                    })
+                    
+                else:
+                    # Invalid credentials
+                    print(f"[EV_Central] ❌ Credentials INVALID for {cp_id}")
+                    print(f"[EV_Central]    Reason: {verify_data.get('error', 'Unknown')}\n")
+                    
+                    # Send DENY response
+                    response = Protocol.encode(
+                        Protocol.build_message(
+                            MessageTypes.DENY,
+                            cp_id,
+                            "AUTHENTICATION_FAILED",
+                            "INVALID_CREDENTIALS"
+                        )
+                    )
+                    client_socket.send(response)
+            
+            else:
+                # Registry error
+                print(f"[EV_Central] ❌ Registry verification failed: {verify_response.status_code}\n")
+                
+                response = Protocol.encode(
+                    Protocol.build_message(
+                        MessageTypes.DENY,
+                        cp_id,
+                        "AUTHENTICATION_FAILED",
+                        "REGISTRY_ERROR"
+                    )
+                )
+                client_socket.send(response)
+        
+        except Exception as e:
+            print(f"[EV_Central] ❌ Authentication error: {e}\n")
+            
+            response = Protocol.encode(
+                Protocol.build_message(
+                    MessageTypes.DENY,
+                    cp_id,
+                    "AUTHENTICATION_FAILED",
+                    "SYSTEM_ERROR"
+                )
+            )
+            try:
+                client_socket.send(response)
+            except:
+                pass
 
     def _load_stored_cps(self):
         """Load charging points from file on startup"""
@@ -201,7 +345,9 @@ class EVCentral:
 
         # print(f"[EV_Central] 📨 Received: {msg_type} from {client_id}")
 
-        if msg_type == MessageTypes.REGISTER:
+        if msg_type == MessageTypes.AUTHENTICATE:
+            self._handle_authenticate(fields, client_socket, client_id)
+        elif msg_type == MessageTypes.REGISTER:
             self._handle_register(fields, client_socket, client_id)
         elif msg_type == MessageTypes.HEARTBEAT:
             self._handle_heartbeat(fields, client_socket, client_id)

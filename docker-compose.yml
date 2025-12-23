@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   # ============================================================================
   # Infrastructure - Zookeeper & Kafka
@@ -12,12 +14,20 @@ services:
       - "2181:2181"
     networks:
       - evcharging_net
+    # SIMPLE HEALTHCHECK THAT WORKS ON WINDOWS
+    healthcheck:
+      test: ["CMD-SHELL", "echo stat | nc localhost 2181 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   kafka:
     image: confluentinc/cp-kafka:7.3.0
     container_name: evcharging_kafka
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_started  # Changed from service_healthy
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -29,6 +39,8 @@ services:
       - "9092:9092"
     networks:
       - evcharging_net
+    # REMOVED HEALTHCHECK - Not reliable on Windows
+    restart: unless-stopped
 
   # ============================================================================
   # EV_Registry - REST API
@@ -45,6 +57,7 @@ services:
       - ./data:/app/data
     networks:
       - evcharging_net
+    restart: unless-stopped
 
   # ============================================================================
   # CENTRAL - Control Center
@@ -56,8 +69,8 @@ services:
     image: evcharging-central
     container_name: evcharging_central
     depends_on:
-      - registry
       - kafka
+      - registry
     environment:
       KAFKA_BROKER: kafka:9092
       REGISTRY_URL: http://registry:5001
@@ -70,9 +83,10 @@ services:
       - evcharging_net
     stdin_open: true
     tty: true
+    restart: unless-stopped
 
   # ============================================================================
-  # EV_W - Weather Control Office (NEW!)
+  # EV_W - Weather Control Office
   # ============================================================================
   weather:
     build:
@@ -88,9 +102,10 @@ services:
       - evcharging_net
     stdin_open: true
     tty: true
+    restart: unless-stopped
 
   # ============================================================================
-  # Front - Web Dashboard (NEW!)
+  # Front - Web Dashboard
   # ============================================================================
   front:
     build:
@@ -102,6 +117,7 @@ services:
       - "8081:80"
     networks:
       - evcharging_net
+    restart: unless-stopped
 
   # ============================================================================
   # Driver 1
@@ -113,7 +129,6 @@ services:
     image: evcharging-driver
     container_name: evcharging_driver_1
     depends_on:
-      - kafka 
       - central
     environment:
       KAFKA_BROKER: kafka:9092
@@ -122,6 +137,7 @@ services:
       - evcharging_net
     stdin_open: true
     tty: true
+    restart: unless-stopped
 
   # ============================================================================
   # Driver 2
@@ -133,7 +149,6 @@ services:
     image: evcharging-driver
     container_name: evcharging_driver_2
     depends_on:
-      - kafka 
       - central
     environment:
       KAFKA_BROKER: kafka:9092
@@ -142,6 +157,7 @@ services:
       - evcharging_net
     stdin_open: true
     tty: true
+    restart: unless-stopped
 
   # ============================================================================
   # Auto Driver
@@ -153,7 +169,6 @@ services:
     image: evcharging-driver
     container_name: evcharging_driver_auto
     depends_on:
-      - kafka 
       - central
     environment:
       KAFKA_BROKER: kafka:9092
@@ -164,6 +179,7 @@ services:
       - evcharging_net
     stdin_open: true
     tty: true
+    restart: unless-stopped
 
   # ============================================================================
   # CP Manager - Interactive Control Panel
@@ -178,11 +194,12 @@ services:
       - central
       - registry
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock  # Access to Docker
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - evcharging_net
     stdin_open: true
     tty: true
+    restart: unless-stopped
 
 # ============================================================================
 # Network definition
