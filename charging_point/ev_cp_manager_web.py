@@ -335,7 +335,7 @@ class CPManagerTerminal:
         return output
 
 
-async def handle_client(websocket, path):
+async def handle_client(websocket):
     """Handle WebSocket connection from browser"""
     terminal = CPManagerTerminal()
     
