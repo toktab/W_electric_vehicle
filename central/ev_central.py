@@ -17,6 +17,7 @@ from flask_cors import CORS
 from shared.protocol import Protocol, MessageTypes
 from shared.kafka_client import KafkaClient
 from shared.file_storage import FileStorage
+from shared.audit_logger import AuditLogger
 
 
 class EVCentral:
@@ -41,6 +42,10 @@ class EVCentral:
         # Kafka client
         self.kafka = KafkaClient("EV_Central")
 
+        # Audit logger
+        self.audit = AuditLogger("data/audit_log.txt")
+        print("[EV_Central] Audit logging enabled")
+
         # Lock for thread safety
         self.lock = threading.Lock()
 
@@ -56,6 +61,12 @@ class EVCentral:
         
         # Load existing CPs from file on startup
         self._load_stored_cps()
+
+    def _get_ip_for_entity(self, entity_id):
+        """Get IP address for an entity"""
+        if not hasattr(self, 'entity_to_ip'):
+            self.entity_to_ip = {}
+        return self.entity_to_ip.get(entity_id, "UNKNOWN")
 
     def _handle_authenticate(self, fields, client_socket, client_id):
         """
@@ -92,6 +103,15 @@ class EVCentral:
                 if verify_data.get("valid", False):
                     # Credentials are valid!
                     print(f"[EV_Central] ✅ Credentials VALID for {cp_id}")
+
+                    # Audit log: successful authentication
+                    client_ip = client_id.split(':')[0]
+                    self.audit.log(
+                        entity=cp_id,
+                        event_type="AUTHENTICATION_SUCCESS",
+                        ip_address=client_ip,
+                        parameters=f"username={username}"
+                    )
                     
                     # Generate encryption key (for TASK 2)
                     # For now, just a placeholder
@@ -156,6 +176,16 @@ class EVCentral:
                 else:
                     # Invalid credentials
                     print(f"[EV_Central] ❌ Credentials INVALID for {cp_id}")
+
+                    # Audit log: failed authentication
+                    client_ip = client_id.split(':')[0]
+                    self.audit.log(
+                        entity=cp_id,
+                        event_type="AUTHENTICATION_FAILED",
+                        ip_address=client_ip,
+                        parameters=f"username={username}, reason=invalid_credentials"
+                    )
+
                     print(f"[EV_Central]    Reason: {verify_data.get('error', 'Unknown')}\n")
                     
                     # Send DENY response
@@ -394,6 +424,10 @@ class EVCentral:
                 
                 self.entity_to_socket[entity_id] = client_socket
 
+                # Track IP address
+                self.entity_to_ip = getattr(self, 'entity_to_ip', {})
+                self.entity_to_ip[entity_id] = client_id.split(':')[0]
+
             self.storage.save_cp(entity_id, lat, lon, price, CP_STATES["ACTIVATED"])
 
             print(f"[EV_Central] ✅ CP Registered: {entity_id} at ({lat}, {lon}) - Saved to file")
@@ -455,6 +489,15 @@ class EVCentral:
 
         print(f"[EV_Central] 🔌 {driver_id} requesting {kwh_needed} kWh at {cp_id}")
 
+        # Audit log: charge requested
+        client_ip = client_id.split(':')[0]
+        self.audit.log(
+            entity=driver_id,
+            event_type="CHARGE_REQUESTED",
+            ip_address=client_ip,
+            parameters=f"cp={cp_id}, kwh={kwh_needed}"
+        )
+
         with self.lock:
             if cp_id not in self.charging_points:
                 response = Protocol.encode(
@@ -488,6 +531,14 @@ class EVCentral:
             self.drivers[driver_id]["current_cp"] = cp_id
 
         print(f"[EV_Central] ✅ Charge authorized: Driver {driver_id} → CP {cp_id}")
+
+        # Audit log: charge authorized
+        self.audit.log(
+            entity=cp_id,
+            event_type="CHARGE_AUTHORIZED",
+            ip_address=self._get_ip_for_entity(cp_id),
+            parameters=f"driver={driver_id}, kwh={kwh_needed}"
+        )
 
         # Send AUTHORIZE to driver
         response = Protocol.encode(
@@ -608,6 +659,15 @@ class EVCentral:
 
         print(f"\n[EV_Central] ✅ {driver_id} unplugged from {cp_id}")
         print(f"[EV_Central]    → {total_kwh:.2f} kWh, {total_amount:.2f}€, {duration_seconds}s")
+
+        # Audit log: charge completed
+        self.audit.log(
+            entity=cp_id,
+            event_type="CHARGE_COMPLETED",
+            ip_address=self._get_ip_for_entity(cp_id),
+            parameters=f"driver={driver_id}, total_kwh={total_kwh}, total_amount={total_amount}€, duration={duration_seconds}s"
+        )
+
         print(f"[EV_Central]    → CP {cp_id} now ACTIVATED\n")
 
         if driver_id in self.entity_to_socket:
@@ -774,6 +834,14 @@ class EVCentral:
                         self.drivers[driver_id]["current_cp"] = None
 
         print(f"[EV_Central] ⚠️ FAULT reported for CP {cp_id}")
+
+        # Audit log: fault detected
+        self.audit.log(
+            entity=cp_id,
+            event_type="FAULT_DETECTED",
+            ip_address=self._get_ip_for_entity(cp_id),
+            parameters="component=engine, status=health_ko"
+        )
         
         if was_supplying and driver_id:
             print(f"[EV_Central] ⚠️  Charging session interrupted for driver {driver_id}")
@@ -801,6 +869,14 @@ class EVCentral:
                 self.charging_points[cp_id]["state"] = CP_STATES["ACTIVATED"]
 
         print(f"[EV_Central] ✅ CP {cp_id} recovered")
+
+        # Audit log: recovery
+        self.audit.log(
+            entity=cp_id,
+            event_type="RECOVERY",
+            ip_address=self._get_ip_for_entity(cp_id),
+            parameters="fault_resolved=true"
+        )
         self.kafka.publish_event("system_events", "CP_RECOVERED", {"cp_id": cp_id})
 
     def _handle_query_available_cps(self, fields, client_socket, client_id):
@@ -956,6 +1032,14 @@ class EVCentral:
                             )
                             self.entity_to_socket[cp_id].send(stop_msg)
                             print(f"✅ CP {cp_id} stopped")
+
+                            # Audit log: admin stop command
+                            self.audit.log(
+                                entity="ADMIN",
+                                event_type="COMMAND_EXECUTED",
+                                ip_address="localhost",
+                                parameters=f"action=stop_cp, target={cp_id}"
+                            )
                             
                             if was_charging and driver_id and driver_id in self.entity_to_socket:
                                 ticket_msg = Protocol.encode(
@@ -989,6 +1073,14 @@ class EVCentral:
                             )
                             self.entity_to_socket[cp_id].send(resume_msg)
                             print(f"✅ CP {cp_id} resumed")
+
+                            # Audit log: admin resume command
+                            self.audit.log(
+                                entity="ADMIN",
+                                event_type="COMMAND_EXECUTED",
+                                ip_address="localhost",
+                                parameters=f"action=resume_cp, target={cp_id}"
+                            )
                         except Exception as e:
                             print(f"❌ Failed to resume CP: {e}")
                     else:
@@ -1010,6 +1102,24 @@ class EVCentral:
 
     def _setup_flask_routes(self):
         """Setup all REST API routes"""
+
+        @self.app.route('/api/audit/recent', methods=['GET'])
+        def get_audit_log():
+            """Get recent audit log entries"""
+            try:
+                limit = request.args.get('limit', default=50, type=int)
+                entries = self.audit.get_recent(limit)
+                
+                return jsonify({
+                    "success": True,
+                    "count": len(entries),
+                    "entries": entries
+                }), 200
+            except Exception as e:
+                return jsonify({
+                    "success": False,
+                    "error": str(e)
+                }), 500
         
         @self.app.route('/api/cps', methods=['GET'])
         def get_cps():

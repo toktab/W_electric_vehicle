@@ -1,0 +1,9 @@
+# EV Charging System - Audit Log
+# Format: TIMESTAMP | IP_ADDRESS | ENTITY | EVENT_TYPE | PARAMETERS
+#====================================================================================================
+2026-01-09T21:50:17.023986 | 172.18.0.9 | DRIVER-001 | CHARGE_REQUESTED | cp=CP-001, kwh=10.0
+2026-01-09T21:50:17.044140 | 172.18.0.8 | CP-001 | CHARGE_AUTHORIZED | driver=DRIVER-001, kwh=10.0
+2026-01-09T21:50:36.372700 | 172.18.0.8 | CP-001 | CHARGE_COMPLETED | driver=DRIVER-001, total_kwh=10.0, total_amount=5.0€, duration=0s
+2026-01-09T21:50:43.116955 | 172.18.0.9 | DRIVER-001 | CHARGE_REQUESTED | cp=CP-002, kwh=10.0
+2026-01-09T21:50:43.190760 | 172.18.0.11 | CP-002 | CHARGE_AUTHORIZED | driver=DRIVER-001, kwh=10.0
+2026-01-09T21:51:02.918378 | 172.18.0.11 | CP-002 | CHARGE_COMPLETED | driver=DRIVER-001, total_kwh=10.0, total_amount=5.0€, duration=0s
