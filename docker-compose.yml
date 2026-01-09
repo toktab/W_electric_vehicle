@@ -181,8 +181,8 @@ services:
     tty: true
     restart: unless-stopped
 
-  # ============================================================================
-  # CP Manager - Interactive Control Panel
+# ============================================================================
+  # CP Manager - Interactive Control Panel WITH WEBSOCKET
   # ============================================================================
   cp_manager:
     build:
@@ -197,6 +197,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - evcharging_net
+    ports:
+      - "8082:8082"  # NEW: WebSocket port
     stdin_open: true
     tty: true
     restart: unless-stopped
