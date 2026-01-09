@@ -19,6 +19,34 @@ class CPManagerTerminal:
     def __init__(self):
         self.state = 'MENU'
         self.temp_data = {}
+        self.network_name = None
+        self._detect_network()
+    
+    def _detect_network(self):
+        """Detect the Docker network that Central is using"""
+        try:
+            result = subprocess.run(
+                ["docker", "inspect", "evcharging_central", 
+                 "--format", "{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}"],
+                capture_output=True,
+                text=True
+            )
+            self.network_name = result.stdout.strip()
+            if not self.network_name:
+                # Fallback: try to find any network with 'evcharging' in name
+                result = subprocess.run(
+                    ["docker", "network", "ls", "--filter", "name=evcharging", 
+                     "--format", "{{.Name}}"],
+                    capture_output=True,
+                    text=True
+                )
+                networks = result.stdout.strip().split('\n')
+                self.network_name = networks[0] if networks else "bridge"
+            
+            print(f"[CPManager] Detected network: {self.network_name}")
+        except Exception as e:
+            print(f"[CPManager] Network detection failed: {e}")
+            self.network_name = "bridge"
     
     def format_output(self, text, color='white'):
         """Format text with ANSI color codes"""
@@ -48,6 +76,7 @@ class CPManagerTerminal:
   {self.format_output('clear', 'cyan')} - Clear terminal
   {self.format_output('help', 'cyan')} - Show this help
 
+{self.format_output('Network:', 'yellow')} {self.format_output(self.network_name, 'green')}
 {self.format_output('────────────────────────────────────────────────────────────', 'purple')}
 """
     
@@ -106,7 +135,7 @@ class CPManagerTerminal:
             return self.get_welcome_message()
         
         elif command == 'clear':
-            return '[CLEAR]'  # Special signal to clear terminal
+            return '[CLEAR]'
         
         else:
             return self.format_output(f"❌ Unknown command: '{command}'. Type 'help' for available commands.", 'red')
@@ -152,8 +181,8 @@ class CPManagerTerminal:
             
             # Launch containers
             output += f"\n{self.format_output('🚀 Step 3/3: Launching containers...', 'blue')}\n"
+            output += self.format_output(f"   📡 Network: {self.network_name}", 'cyan') + "\n"
             
-            network = "w_electric_vehicle_evcharging_net"
             cp_port = 6000 + cp_num
             engine_name = f"evcharging_cp_engine_{cp_num}"
             monitor_name = f"evcharging_cp_monitor_{cp_num}"
@@ -162,12 +191,12 @@ class CPManagerTerminal:
             subprocess.run(["docker", "rm", "-f", engine_name], capture_output=True)
             subprocess.run(["docker", "rm", "-f", monitor_name], capture_output=True)
             
-            # Create Engine
+            # Create Engine with CORRECT network
             output += self.format_output(f"   🔧 Creating {engine_name}...", 'white') + "\n"
             engine_cmd = [
                 "docker", "run", "-d",
                 "--name", engine_name,
-                "--network", network,
+                "--network", self.network_name,  # ✅ CORRECT NETWORK!
                 "-p", f"{cp_port}:{cp_port}",
                 "-e", "KAFKA_BROKER=kafka:9092",
                 "-it", "evcharging-cp",
@@ -183,12 +212,12 @@ class CPManagerTerminal:
             
             await asyncio.sleep(2)
             
-            # Create Monitor
+            # Create Monitor with CORRECT network
             output += self.format_output(f"   🔍 Creating {monitor_name}...", 'white') + "\n"
             monitor_cmd = [
                 "docker", "run", "-d",
                 "--name", monitor_name,
-                "--network", network,
+                "--network", self.network_name,  # ✅ CORRECT NETWORK!
                 "-e", "KAFKA_BROKER=kafka:9092",
                 "-it", "evcharging-cp",
                 "python", "charging_point/ev_cp_monitor.py",
@@ -201,9 +230,13 @@ class CPManagerTerminal:
             else:
                 raise Exception(f"Monitor failed: {result.stderr}")
             
+            output += f"\n{self.format_output('⏳ Waiting 10s for authentication...', 'blue')}\n"
+            await asyncio.sleep(10)
+            
             output += f"\n{self.format_output('╔══════════════════════════════════════════════════════════════╗', 'green')}\n"
             output += f"{self.format_output('║', 'green')}  {self.format_output(f'✅ {cp_id} READY FOR CHARGING!', 'green')}                               {self.format_output('║', 'green')}\n"
             output += f"{self.format_output('╚══════════════════════════════════════════════════════════════╝', 'green')}\n"
+            output += f"\n{self.format_output('💡 Refresh the dashboard to see it ACTIVATED!', 'cyan')}\n"
             
         except Exception as e:
             output += f"\n{self.format_output(f'❌ Error: {e}', 'red')}\n"
