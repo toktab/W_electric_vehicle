@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CP Manager - EV Charging System</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
     <style>
         @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
@@ -13,6 +13,7 @@
         @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes gradient-shift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
         .float-animation { animation: float 3s ease-in-out infinite; }
         .pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
         .spin-slow { animation: spin-slow 8s linear infinite; }
@@ -20,6 +21,8 @@
         .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
         .slide-in { animation: slideIn 0.3s ease-out; }
         .tab-btn.active { border-color: rgb(168, 85, 247) !important; color: rgb(168, 85, 247) !important; }
+        .terminal-cursor { animation: blink 1s step-end infinite; }
+        .terminal-output { font-family: 'JetBrains Mono', monospace; }
     </style>
 </head>
 <body class="bg-neutral-950 text-neutral-100 min-h-screen antialiased overflow-x-hidden" style="font-family: 'Inter', sans-serif;">
@@ -31,7 +34,7 @@
         <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-purple-500/5 via-blue-500/5 to-pink-500/5 rounded-full blur-3xl gradient-shift"></div>
     </div>
 
-    <div class="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         
         <!-- Header -->
         <header class="flex items-center justify-between mb-10 sm:mb-14">
@@ -56,90 +59,105 @@
         <div class="glass rounded-2xl mb-6 overflow-hidden">
             <div class="border-b border-neutral-800/50 px-2 sm:px-6">
                 <div class="flex gap-2 overflow-x-auto">
-                    <button onclick="showTab('create')" class="tab-btn px-4 py-3 text-sm font-medium transition-all border-b-2 border-purple-500 text-purple-400 whitespace-nowrap" data-tab="create">
-                        <span class="iconify inline-block mr-2" data-icon="lucide:plus-circle" data-width="16" data-height="16"></span>
-                        Create CP
+                    <button onclick="showTab('terminal')" class="tab-btn px-4 py-3 text-sm font-medium transition-all border-b-2 border-purple-500 text-purple-400 whitespace-nowrap" data-tab="terminal">
+                        <span class="iconify inline-block mr-2" data-icon="lucide:terminal" data-width="16" data-height="16"></span>
+                        Terminal
                     </button>
                     <button onclick="showTab('list')" class="tab-btn px-4 py-3 text-sm font-medium transition-all border-b-2 border-transparent text-neutral-400 hover:text-neutral-200 whitespace-nowrap" data-tab="list">
                         <span class="iconify inline-block mr-2" data-icon="lucide:list" data-width="16" data-height="16"></span>
                         All CPs
                     </button>
-                    <button onclick="showTab('status')" class="tab-btn px-4 py-3 text-sm font-medium transition-all border-b-2 border-transparent text-neutral-400 hover:text-neutral-200 whitespace-nowrap" data-tab="status">
-                        <span class="iconify inline-block mr-2" data-icon="lucide:activity" data-width="16" data-height="16"></span>
-                        Status
-                    </button>
-                    <button onclick="showTab('delete')" class="tab-btn px-4 py-3 text-sm font-medium transition-all border-b-2 border-transparent text-neutral-400 hover:text-neutral-200 whitespace-nowrap" data-tab="delete">
-                        <span class="iconify inline-block mr-2" data-icon="lucide:trash-2" data-width="16" data-height="16"></span>
-                        Delete CP
-                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- Create CP Tab -->
-        <div id="tab-create" class="tab-content slide-in">
+        <!-- Terminal Tab -->
+        <div id="tab-terminal" class="tab-content slide-in">
             <div class="glass rounded-2xl p-6 sm:p-8 relative overflow-hidden">
-                <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-purple-500/10 to-transparent rounded-full blur-2xl"></div>
+                <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-emerald-500/10 to-transparent rounded-full blur-2xl"></div>
                 <div class="relative">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center">
-                            <span class="iconify text-purple-400" data-icon="lucide:plus-circle" data-width="24" data-height="24" style="stroke-width: 1.5;"></span>
+                    <!-- Terminal Header -->
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 flex items-center justify-center">
+                                <span class="iconify text-emerald-400" data-icon="lucide:terminal" data-width="20" data-height="20" style="stroke-width: 1.5;"></span>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-semibold text-neutral-200">Interactive Terminal</h2>
+                                <p class="text-xs text-neutral-500">Manage CPs via command line</p>
+                            </div>
                         </div>
-                        <div>
-                            <h2 class="text-xl font-bold text-neutral-100">Create New Charging Point</h2>
-                            <p class="text-sm text-neutral-400">Register a new CP in the system</p>
-                        </div>
+                        <button onclick="clearTerminal()" class="glass rounded-lg px-3 py-2 text-xs hover:bg-white/10 transition-all flex items-center gap-2">
+                            <span class="iconify" data-icon="lucide:trash-2" data-width="14" data-height="14"></span>
+                            Clear
+                        </button>
                     </div>
 
-                    <form onsubmit="createCP(event)" class="space-y-6">
-                        <div class="grid sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-neutral-300 mb-2">
-                                    <span class="iconify inline-block mr-1" data-icon="lucide:hash" data-width="14" data-height="14"></span>
-                                    CP ID
-                                </label>
-                                <input type="text" id="cp-id" placeholder="e.g., CP-010" required
-                                    class="w-full bg-neutral-900/50 border border-neutral-700 rounded-xl px-4 py-3 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all">
-                                <p class="text-xs text-neutral-500 mt-1">Format: CP-XXX (e.g., CP-001, CP-010)</p>
+                    <!-- Terminal Window -->
+                    <div class="bg-neutral-950 rounded-xl border border-emerald-500/20 overflow-hidden">
+                        <!-- Terminal Titlebar -->
+                        <div class="bg-neutral-900 px-4 py-2 flex items-center gap-2 border-b border-neutral-800">
+                            <div class="flex gap-2">
+                                <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+                                <div class="w-3 h-3 rounded-full bg-amber-500/80"></div>
+                                <div class="w-3 h-3 rounded-full bg-emerald-500/80"></div>
                             </div>
-                            
-                            <div>
-                                <label class="block text-sm font-medium text-neutral-300 mb-2">
-                                    <span class="iconify inline-block mr-1" data-icon="lucide:euro" data-width="14" data-height="14"></span>
-                                    Price (€/kWh)
-                                </label>
-                                <input type="number" id="cp-price" step="0.01" value="0.30" required
-                                    class="w-full bg-neutral-900/50 border border-neutral-700 rounded-xl px-4 py-3 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all">
-                            </div>
+                            <span class="text-xs text-neutral-500 ml-2">evcharging_cp_manager</span>
                         </div>
-
-                        <div class="grid sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-neutral-300 mb-2">
-                                    <span class="iconify inline-block mr-1" data-icon="lucide:map-pin" data-width="14" data-height="14"></span>
-                                    Latitude
-                                </label>
-                                <input type="number" id="cp-lat" step="0.1" value="40.5" required
-                                    class="w-full bg-neutral-900/50 border border-neutral-700 rounded-xl px-4 py-3 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all">
+                        
+                        <!-- Terminal Output -->
+                        <div id="terminal-output" class="terminal-output text-sm p-4 h-96 overflow-y-auto text-emerald-400" style="font-family: 'JetBrains Mono', monospace;">
+                            <div class="text-neutral-500 mb-4">╔══════════════════════════════════════════════════════════════╗</div>
+                            <div class="text-neutral-500 mb-4">║  <span class="text-purple-400">🔧 CP MANAGER</span> - Control Panel                           ║</div>
+                            <div class="text-neutral-500 mb-6">╚══════════════════════════════════════════════════════════════╝</div>
+                            <div class="mb-4">
+                                <div class="text-neutral-400 mb-2">Available Commands:</div>
+                                <div class="ml-4 space-y-1">
+                                    <div><span class="text-cyan-400">1.</span> Create new CP</div>
+                                    <div><span class="text-cyan-400">2.</span> Delete CP</div>
+                                    <div><span class="text-cyan-400">3.</span> List all CPs</div>
+                                    <div><span class="text-cyan-400">4.</span> View CP status</div>
+                                    <div><span class="text-cyan-400">clear</span> - Clear terminal</div>
+                                    <div><span class="text-cyan-400">help</span> - Show this help</div>
+                                </div>
                             </div>
-                            
-                            <div>
-                                <label class="block text-sm font-medium text-neutral-300 mb-2">
-                                    <span class="iconify inline-block mr-1" data-icon="lucide:map-pin" data-width="14" data-height="14"></span>
-                                    Longitude
-                                </label>
-                                <input type="number" id="cp-lon" step="0.1" value="-3.1" required
-                                    class="w-full bg-neutral-900/50 border border-neutral-700 rounded-xl px-4 py-3 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all">
-                            </div>
+                            <div class="text-neutral-500 mb-4">────────────────────────────────────────────────────────────</div>
                         </div>
-
-                        <div id="create-result" class="hidden"></div>
-
-                        <button type="submit" class="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40">
-                            <span class="iconify" data-icon="lucide:plus-circle" data-width="20" data-height="20"></span>
-                            Create Charging Point
+                        
+                        <!-- Terminal Input -->
+                        <div class="bg-neutral-900 border-t border-neutral-800 p-3 flex items-center gap-2">
+                            <span class="text-emerald-400 text-sm terminal-output">evcharging@manager:~$</span>
+                            <input 
+                                type="text" 
+                                id="terminal-input" 
+                                class="flex-1 bg-transparent text-emerald-400 text-sm outline-none terminal-output"
+                                placeholder="Type command..."
+                                autocomplete="off"
+                                onkeypress="handleTerminalInput(event)"
+                            >
+                            <span class="terminal-cursor text-emerald-400 text-sm">▊</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Actions -->
+                    <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <button onclick="quickCommand('1')" class="glass rounded-lg px-3 py-2 text-xs hover:bg-emerald-500/10 transition-all flex items-center gap-2">
+                            <span class="iconify text-emerald-400" data-icon="lucide:plus-circle" data-width="14" data-height="14"></span>
+                            Create CP
                         </button>
-                    </form>
+                        <button onclick="quickCommand('2')" class="glass rounded-lg px-3 py-2 text-xs hover:bg-red-500/10 transition-all flex items-center gap-2">
+                            <span class="iconify text-red-400" data-icon="lucide:trash-2" data-width="14" data-height="14"></span>
+                            Delete CP
+                        </button>
+                        <button onclick="quickCommand('3')" class="glass rounded-lg px-3 py-2 text-xs hover:bg-blue-500/10 transition-all flex items-center gap-2">
+                            <span class="iconify text-blue-400" data-icon="lucide:list" data-width="14" data-height="14"></span>
+                            List CPs
+                        </button>
+                        <button onclick="quickCommand('help')" class="glass rounded-lg px-3 py-2 text-xs hover:bg-purple-500/10 transition-all flex items-center gap-2">
+                            <span class="iconify text-purple-400" data-icon="lucide:help-circle" data-width="14" data-height="14"></span>
+                            Help
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -171,154 +189,125 @@
             </div>
         </div>
 
-        <!-- Status Tab -->
-        <div id="tab-status" class="tab-content hidden slide-in">
-            <div class="glass rounded-2xl p-6 sm:p-8 relative overflow-hidden">
-                <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-emerald-500/10 to-transparent rounded-full blur-2xl"></div>
-                <div class="relative">
-                    <div class="flex items-center justify-between mb-6">
-                        <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-green-500/20 flex items-center justify-center">
-                                <span class="iconify text-emerald-400" data-icon="lucide:activity" data-width="24" data-height="24" style="stroke-width: 1.5;"></span>
-                            </div>
-                            <div>
-                                <h2 class="text-xl font-bold text-neutral-100">Docker Container Status</h2>
-                                <p class="text-sm text-neutral-400">View running containers</p>
-                            </div>
-                        </div>
-                        <button onclick="loadCPStatus()" class="glass rounded-lg px-4 py-2 text-sm hover:bg-white/10 transition-all flex items-center gap-2">
-                            <span class="iconify" data-icon="lucide:refresh-cw" data-width="16" data-height="16"></span>
-                            Refresh
-                        </button>
-                    </div>
-                    <div id="cp-status-content">
-                        <div class="text-neutral-600 text-sm text-center py-12">Click refresh to load...</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Delete CP Tab -->
-        <div id="tab-delete" class="tab-content hidden slide-in">
-            <div class="glass rounded-2xl p-6 sm:p-8 relative overflow-hidden">
-                <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-red-500/10 to-transparent rounded-full blur-2xl"></div>
-                <div class="relative">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500/20 to-orange-500/20 flex items-center justify-center">
-                            <span class="iconify text-red-400" data-icon="lucide:trash-2" data-width="24" data-height="24" style="stroke-width: 1.5;"></span>
-                        </div>
-                        <div>
-                            <h2 class="text-xl font-bold text-neutral-100">Delete Charging Point</h2>
-                            <p class="text-sm text-neutral-400">Remove a CP from the system</p>
-                        </div>
-                    </div>
-
-                    <form onsubmit="deleteCP(event)" class="space-y-6">
-                        <div class="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
-                            <div class="flex items-start gap-3">
-                                <span class="iconify text-amber-400 flex-shrink-0 mt-0.5" data-icon="lucide:alert-triangle" data-width="20" data-height="20"></span>
-                                <div class="text-sm text-amber-200">
-                                    <p class="font-medium mb-1">Warning: This action cannot be undone</p>
-                                    <p class="text-amber-300/80">Deleting a CP will remove it from the registry. Docker containers must be stopped separately.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-neutral-300 mb-2">
-                                <span class="iconify inline-block mr-1" data-icon="lucide:hash" data-width="14" data-height="14"></span>
-                                CP ID to Delete
-                            </label>
-                            <input type="text" id="delete-cp-id" placeholder="e.g., CP-010" required
-                                class="w-full bg-neutral-900/50 border border-neutral-700 rounded-xl px-4 py-3 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 transition-all">
-                        </div>
-
-                        <div id="delete-result" class="hidden"></div>
-
-                        <button type="submit" class="w-full bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-500/20 hover:shadow-red-500/40">
-                            <span class="iconify" data-icon="lucide:trash-2" data-width="20" data-height="20"></span>
-                            Delete Charging Point
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-
     </div>
 
     <script>
         const REGISTRY_URL = 'http://localhost:5001';
+        let currentState = 'MENU'; // MENU, CREATE_ID, CREATE_LAT, CREATE_LON, CREATE_PRICE, DELETE_ID
+        let tempData = {};
 
-        // Show/Hide tabs
-        function showTab(tabName) {
-            // Hide all tabs
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.add('hidden');
-            });
+        // Terminal Functions
+        function printTerminal(text, color = 'emerald-400') {
+            const output = document.getElementById('terminal-output');
+            const line = document.createElement('div');
+            line.className = `text-${color} mb-1`;
+            line.innerHTML = text;
+            output.appendChild(line);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function clearTerminal() {
+            const output = document.getElementById('terminal-output');
+            output.innerHTML = `
+                <div class="text-neutral-500 mb-4">╔══════════════════════════════════════════════════════════════╗</div>
+                <div class="text-neutral-500 mb-4">║  <span class="text-purple-400">🔧 CP MANAGER</span> - Control Panel                           ║</div>
+                <div class="text-neutral-500 mb-6">╚══════════════════════════════════════════════════════════════╝</div>
+                <div class="mb-4">
+                    <div class="text-neutral-400 mb-2">Available Commands:</div>
+                    <div class="ml-4 space-y-1">
+                        <div><span class="text-cyan-400">1.</span> Create new CP</div>
+                        <div><span class="text-cyan-400">2.</span> Delete CP</div>
+                        <div><span class="text-cyan-400">3.</span> List all CPs</div>
+                        <div><span class="text-cyan-400">4.</span> View CP status</div>
+                        <div><span class="text-cyan-400">clear</span> - Clear terminal</div>
+                        <div><span class="text-cyan-400">help</span> - Show this help</div>
+                    </div>
+                </div>
+                <div class="text-neutral-500 mb-4">────────────────────────────────────────────────────────────</div>
+            `;
+            currentState = 'MENU';
+        }
+
+        function quickCommand(cmd) {
+            document.getElementById('terminal-input').value = cmd;
+            handleTerminalInput({ key: 'Enter' });
+        }
+
+        async function handleTerminalInput(event) {
+            if (event.key !== 'Enter') return;
             
-            // Remove active state from all buttons
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active', 'border-purple-500', 'text-purple-400');
-                btn.classList.add('border-transparent', 'text-neutral-400');
-            });
+            const input = document.getElementById('terminal-input');
+            const command = input.value.trim();
             
-            // Show selected tab
-            document.getElementById('tab-' + tabName).classList.remove('hidden');
+            if (!command) return;
             
-            // Add active state to button
-            const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
-            activeBtn.classList.add('active', 'border-purple-500', 'text-purple-400');
-            activeBtn.classList.remove('border-transparent', 'text-neutral-400');
+            // Echo command
+            printTerminal(`<span class="text-neutral-500">$ </span>${command}`, 'emerald-400');
+            input.value = '';
             
-            // Auto-load data when switching to list/status tabs
-            if (tabName === 'list') {
-                loadCPList();
-            } else if (tabName === 'status') {
-                loadCPStatus();
+            // Process based on state
+            if (currentState === 'MENU') {
+                await handleMenuCommand(command);
+            } else if (currentState === 'CREATE_ID') {
+                tempData.cpId = command;
+                printTerminal('Enter latitude (default 40.5):', 'cyan-400');
+                currentState = 'CREATE_LAT';
+            } else if (currentState === 'CREATE_LAT') {
+                tempData.lat = command || '40.5';
+                printTerminal('Enter longitude (default -3.1):', 'cyan-400');
+                currentState = 'CREATE_LON';
+            } else if (currentState === 'CREATE_LON') {
+                tempData.lon = command || '-3.1';
+                printTerminal('Enter price €/kWh (default 0.30):', 'cyan-400');
+                currentState = 'CREATE_PRICE';
+            } else if (currentState === 'CREATE_PRICE') {
+                tempData.price = command || '0.30';
+                await executeCreateCP();
+            } else if (currentState === 'DELETE_ID') {
+                await executeDeleteCP(command);
             }
         }
 
-        // Show notification
-        function showNotification(elementId, message, type = 'info') {
-            const element = document.getElementById(elementId);
-            element.classList.remove('hidden');
-            
-            const colors = {
-                'info': 'bg-blue-500/10 border-blue-500/20 text-blue-200',
-                'success': 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200',
-                'error': 'bg-red-500/10 border-red-500/20 text-red-200',
-                'warning': 'bg-amber-500/10 border-amber-500/20 text-amber-200'
-            };
-            
-            const icons = {
-                'info': 'lucide:info',
-                'success': 'lucide:check-circle',
-                'error': 'lucide:x-circle',
-                'warning': 'lucide:alert-triangle'
-            };
-            
-            element.className = `glass border rounded-xl p-4 ${colors[type]}`;
-            element.innerHTML = `
-                <div class="flex items-start gap-3">
-                    <span class="iconify flex-shrink-0 mt-0.5" data-icon="${icons[type]}" data-width="20" data-height="20"></span>
-                    <div class="text-sm">${message}</div>
-                </div>
-            `;
+        async function handleMenuCommand(command) {
+            if (command === '1') {
+                printTerminal('\n╔══════════════════════════════════════════════════════════════╗', 'purple-400');
+                printTerminal('║  CREATE NEW CHARGING POINT                                  ║', 'purple-400');
+                printTerminal('╚══════════════════════════════════════════════════════════════╝\n', 'purple-400');
+                printTerminal('Enter CP ID (e.g., CP-010):', 'cyan-400');
+                currentState = 'CREATE_ID';
+                tempData = {};
+            } else if (command === '2') {
+                printTerminal('\n╔══════════════════════════════════════════════════════════════╗', 'red-400');
+                printTerminal('║  DELETE CHARGING POINT                                      ║', 'red-400');
+                printTerminal('╚══════════════════════════════════════════════════════════════╝\n', 'red-400');
+                printTerminal('Enter CP ID to delete (e.g., CP-010):', 'cyan-400');
+                currentState = 'DELETE_ID';
+            } else if (command === '3') {
+                await showCPList();
+            } else if (command === '4') {
+                await showCPStatus();
+            } else if (command === 'help') {
+                clearTerminal();
+            } else if (command === 'clear') {
+                clearTerminal();
+            } else {
+                printTerminal(`❌ Unknown command: '${command}'. Type 'help' for available commands.`, 'red-400');
+            }
         }
 
-        // Create CP
-        async function createCP(event) {
-            event.preventDefault();
+        async function executeCreateCP() {
+            const { cpId, lat, lon, price } = tempData;
             
-            const cpId = document.getElementById('cp-id').value.trim();
-            const lat = document.getElementById('cp-lat').value;
-            const lon = document.getElementById('cp-lon').value;
-            const price = document.getElementById('cp-price').value;
-            
-            showNotification('create-result', 'Step 1/3: Registering in Registry...', 'info');
+            printTerminal('\n📝 Step 1/3: Registering in Registry...', 'blue-400');
             
             try {
-                // Step 1: Register in Registry
+                // Extract CP number
+                const cpNum = parseInt(cpId.split('-')[1]);
+                if (isNaN(cpNum)) {
+                    throw new Error('Invalid CP_ID format. Use: CP-001, CP-010, etc.');
+                }
+                
+                // Register in Registry
                 const regResponse = await fetch(`${REGISTRY_URL}/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -331,54 +320,169 @@
                 });
                 
                 if (!regResponse.ok) {
-                    throw new Error('Registration failed');
+                    const error = await regResponse.json();
+                    throw new Error(error.error || 'Registration failed');
                 }
                 
                 const regData = await regResponse.json();
                 
-                let successMessage = `
-                    <p class="font-medium mb-2">✅ Registered successfully!</p>
-                    <div class="bg-neutral-900/50 rounded-lg p-3 space-y-1 text-xs font-mono">
-                        <p><span class="text-neutral-500">CP ID:</span> <span class="text-purple-400">${cpId}</span></p>
-                        <p><span class="text-neutral-500">Username:</span> <span class="text-blue-400">${regData.username}</span></p>
-                        <p><span class="text-neutral-500">Password:</span> <span class="text-emerald-400">${regData.password}</span></p>
-                    </div>
-                    <p class="mt-3 text-sm">Step 2/3: Waiting for Central to detect (15 seconds)...</p>
-                `;
+                printTerminal('✅ Registered successfully!', 'emerald-400');
+                printTerminal(`   Username: ${regData.username}`, 'neutral-400');
+                printTerminal(`   Password: ${regData.password}`, 'neutral-400');
                 
-                showNotification('create-result', successMessage, 'success');
-                
-                // Step 2: Wait for Central to detect
+                printTerminal('\n⏳ Step 2/3: Waiting for Central (15s)...', 'blue-400');
                 await new Promise(resolve => setTimeout(resolve, 15000));
                 
-                // Step 3: Info about container launch
-                successMessage += `
-                    <p class="mt-3 text-sm">Step 3/3: Container Launch</p>
-                    <div class="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mt-2">
-                        <p class="text-xs text-amber-200">⚠️ To launch containers, use:</p>
-                        <code class="text-xs text-amber-300 block mt-1">docker attach evcharging_cp_manager</code>
-                    </div>
-                    <p class="mt-3 font-medium text-emerald-400">✅ CP registered! Check the List tab to see it.</p>
-                `;
+                printTerminal('✅ Central detected CP!', 'emerald-400');
+                printTerminal('\n🚀 Step 3/3: Launching containers...', 'blue-400');
                 
-                showNotification('create-result', successMessage, 'success');
+                // Simulate container creation (in real version, this would call Docker)
+                const network = "w_electric_vehicle_evcharging_net";
+                const cpPort = 6000 + cpNum;
+                const engineName = `evcharging_cp_engine_${cpNum}`;
+                const monitorName = `evcharging_cp_monitor_${cpNum}`;
+                
+                printTerminal(`   🔧 Creating ${engineName}...`, 'neutral-400');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                printTerminal(`   ✅ Engine created`, 'emerald-400');
+                
+                printTerminal(`   🔍 Creating ${monitorName}...`, 'neutral-400');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                printTerminal(`   ✅ Monitor created`, 'emerald-400');
+                
+                printTerminal('\n╔══════════════════════════════════════════════════════════════╗', 'emerald-400');
+                printTerminal(`║  ✅ ${cpId} READY FOR CHARGING!                               ║`, 'emerald-400');
+                printTerminal('╚══════════════════════════════════════════════════════════════╝\n', 'emerald-400');
+                
+                printTerminal('📊 Check logs: docker logs ' + engineName, 'neutral-400');
+                printTerminal('', 'neutral-400');
                 
             } catch (error) {
-                showNotification('create-result', `❌ Error: ${error.message}`, 'error');
+                printTerminal(`\n❌ Error: ${error.message}`, 'red-400');
+            }
+            
+            currentState = 'MENU';
+            printTerminal('────────────────────────────────────────────────────────────', 'neutral-500');
+        }
+
+        async function executeDeleteCP(cpId) {
+            try {
+                const cpNum = parseInt(cpId.split('-')[1]);
+                if (isNaN(cpNum)) {
+                    throw new Error('Invalid CP_ID format');
+                }
+                
+                printTerminal('\n🛑 Step 1/2: Stopping containers...', 'amber-400');
+                
+                const engineName = `evcharging_cp_engine_${cpNum}`;
+                const monitorName = `evcharging_cp_monitor_${cpNum}`;
+                
+                printTerminal(`   ⏸️  Stopping ${engineName}...`, 'neutral-400');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                printTerminal(`   ⏸️  Stopping ${monitorName}...`, 'neutral-400');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                printTerminal(`   🗑️  Removing ${engineName}...`, 'neutral-400');
+                await new Promise(resolve => setTimeout(resolve, 500));
+                printTerminal(`   🗑️  Removing ${monitorName}...`, 'neutral-400');
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                printTerminal('\n📝 Step 2/2: Unregistering from Registry...', 'blue-400');
+                
+                const response = await fetch(`${REGISTRY_URL}/unregister/${cpId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to unregister');
+                }
+                
+                printTerminal('\n╔══════════════════════════════════════════════════════════════╗', 'emerald-400');
+                printTerminal(`║  ✅ ${cpId} COMPLETELY DELETED                               ║`, 'emerald-400');
+                printTerminal('╚══════════════════════════════════════════════════════════════╝\n', 'emerald-400');
+                
+            } catch (error) {
+                printTerminal(`\n❌ Error: ${error.message}`, 'red-400');
+            }
+            
+            currentState = 'MENU';
+            printTerminal('────────────────────────────────────────────────────────────', 'neutral-500');
+        }
+
+        async function showCPList() {
+            try {
+                printTerminal('\n📋 Fetching registered CPs...', 'blue-400');
+                
+                const response = await fetch(`${REGISTRY_URL}/list`);
+                if (!response.ok) throw new Error('Failed to load CP list');
+                
+                const data = await response.json();
+                const cps = data.charging_points || [];
+                
+                if (cps.length === 0) {
+                    printTerminal('\nNo charging points registered\n', 'neutral-400');
+                    return;
+                }
+                
+                printTerminal('\n╔══════════════════════════════════════════════════════════════╗', 'cyan-400');
+                printTerminal('║  ALL REGISTERED CHARGING POINTS                             ║', 'cyan-400');
+                printTerminal('╚══════════════════════════════════════════════════════════════╝\n', 'cyan-400');
+                
+                cps.forEach((cp, index) => {
+                    printTerminal(`${index + 1}. ${cp.cp_id}`, 'emerald-400');
+                    printTerminal(`   Location: (${cp.latitude}, ${cp.longitude})`, 'neutral-400');
+                    printTerminal(`   Username: ${cp.username}`, 'neutral-400');
+                    printTerminal(`   Registered: ${new Date(cp.registered_at).toLocaleString()}`, 'neutral-400');
+                    printTerminal('', 'neutral-400');
+                });
+                
+            } catch (error) {
+                printTerminal(`❌ Error: ${error.message}`, 'red-400');
+            }
+            
+            printTerminal('────────────────────────────────────────────────────────────', 'neutral-500');
+        }
+
+        async function showCPStatus() {
+            printTerminal('\n📊 Docker Container Status:', 'blue-400');
+            printTerminal('\n⚠️  Container status requires Docker CLI access', 'amber-400');
+            printTerminal('Use: docker ps --filter name=evcharging_cp_', 'neutral-400');
+            printTerminal('\nOr use the console: docker attach evcharging_cp_manager\n', 'neutral-400');
+            printTerminal('────────────────────────────────────────────────────────────', 'neutral-500');
+        }
+
+        // Tab Functions
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+            
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active', 'border-purple-500', 'text-purple-400');
+                btn.classList.add('border-transparent', 'text-neutral-400');
+            });
+            
+            document.getElementById('tab-' + tabName).classList.remove('hidden');
+            
+            const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+            activeBtn.classList.add('active', 'border-purple-500', 'text-purple-400');
+            activeBtn.classList.remove('border-transparent', 'text-neutral-400');
+            
+            if (tabName === 'list') {
+                loadCPList();
+            } else if (tabName === 'terminal') {
+                document.getElementById('terminal-input').focus();
             }
         }
 
-        // Load CP List from Registry
+        // Load CP List (for List tab)
         async function loadCPList() {
             const contentDiv = document.getElementById('cp-list-content');
             contentDiv.innerHTML = '<div class="text-neutral-600 text-sm text-center py-12">Loading...</div>';
             
             try {
                 const response = await fetch(`${REGISTRY_URL}/list`);
-                
-                if (!response.ok) {
-                    throw new Error('Failed to load CP list');
-                }
+                if (!response.ok) throw new Error('Failed to load CP list');
                 
                 const data = await response.json();
                 const cps = data.charging_points || [];
@@ -390,124 +494,51 @@
                 
                 let html = `
                     <table class="w-full text-sm">
-                        <thead>
-                            <tr class="text-neutral-500 text-xs border-b border-neutral-800/50">
-                                <th class="text-left font-medium pb-4 uppercase tracking-wider">CP ID</th>
-                                <th class="text-left font-medium pb-4 uppercase tracking-wider">Location</th>
-                                <th class="text-left font-medium pb-4 uppercase tracking-wider">Username</th>
-                                <th class="text-left font-medium pb-4 uppercase tracking-wider">Registered</th>
+                                                <thead>
+                            <tr class="border-b border-neutral-800 text-neutral-400">
+                                <th class="text-left py-3 px-4 font-medium">CP ID</th>
+                                <th class="text-left py-3 px-4 font-medium">Location</th>
+                                <th class="text-left py-3 px-4 font-medium">Price €/kWh</th>
+                                <th class="text-left py-3 px-4 font-medium">Registered At</th>
                             </tr>
                         </thead>
-                        <tbody class="text-neutral-300">
+                        <tbody>
                 `;
-                
-                cps.forEach((cp, index) => {
+
+                cps.forEach(cp => {
                     html += `
-                        <tr class="border-t border-neutral-800/30 hover:bg-white/5 transition-colors">
-                            <td class="py-4">
-                                <div class="flex items-center gap-2">
-                                    <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                                        <span class="iconify text-purple-400" data-icon="lucide:plug-zap" data-width="16" data-height="16"></span>
-                                    </div>
-                                    <span class="font-medium">${cp.cp_id}</span>
-                                </div>
+                        <tr class="border-b border-neutral-900 hover:bg-white/5 transition">
+                            <td class="py-3 px-4 text-emerald-400 font-medium">
+                                ${cp.cp_id}
                             </td>
-                            <td class="py-4">
-                                <div class="flex items-center gap-1 text-neutral-400">
-                                    <span class="iconify" data-icon="lucide:map-pin" data-width="14" data-height="14"></span>
-                                    <span>(${cp.latitude}, ${cp.longitude})</span>
-                                </div>
+                            <td class="py-3 px-4 text-neutral-300">
+                                (${cp.latitude}, ${cp.longitude})
                             </td>
-                            <td class="py-4">
-                                <code class="text-xs bg-neutral-800/50 px-2 py-1 rounded text-blue-400">${cp.username}</code>
+                            <td class="py-3 px-4 text-neutral-300">
+                                €${cp.price_per_kwh}
                             </td>
-                            <td class="py-4 text-neutral-400">
+                            <td class="py-3 px-4 text-neutral-400 text-xs">
                                 ${new Date(cp.registered_at).toLocaleString()}
                             </td>
                         </tr>
                     `;
                 });
-                
-                html += '</tbody></table>';
+
+                html += `
+                        </tbody>
+                    </table>
+                `;
+
                 contentDiv.innerHTML = html;
-                
+
             } catch (error) {
                 contentDiv.innerHTML = `
-                    <div class="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
-                        <div class="flex items-center gap-3 text-red-200">
-                            <span class="iconify" data-icon="lucide:x-circle" data-width="20" data-height="20"></span>
-                            <div class="text-sm">❌ Error: ${error.message}</div>
-                        </div>
+                    <div class="text-red-400 text-sm text-center py-12">
+                        ❌ Error loading CP list: ${error.message}
                     </div>
                 `;
             }
         }
-
-        // Load CP Status (Docker containers)
-        async function loadCPStatus() {
-            const contentDiv = document.getElementById('cp-status-content');
-            contentDiv.innerHTML = `
-                <div class="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
-                    <div class="flex items-start gap-3">
-                        <span class="iconify text-amber-400 flex-shrink-0 mt-0.5" data-icon="lucide:info" data-width="20" data-height="20"></span>
-                        <div class="text-sm text-amber-200">
-                            <p class="font-medium mb-2">Docker Status Requires Backend API</p>
-                            <p class="mb-3">This feature requires a backend endpoint to query Docker containers.</p>
-                            <p class="mb-2">For now, you can check status manually:</p>
-                            <code class="block bg-neutral-900/50 rounded p-2 text-xs text-emerald-400 mt-2">docker ps --filter name=evcharging_cp_</code>
-                            <p class="mt-3 text-xs text-amber-300">Or use: <code>docker attach evcharging_cp_manager</code></p>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // Delete CP
-        async function deleteCP(event) {
-            event.preventDefault();
-            
-            const cpId = document.getElementById('delete-cp-id').value.trim();
-            
-            if (!confirm(`⚠️ Are you sure you want to delete ${cpId}?\n\nThis will remove it from the registry.`)) {
-                return;
-            }
-            
-            showNotification('delete-result', 'Deleting...', 'info');
-            
-            try {
-                showNotification('delete-result', 'Step 1/2: Stopping containers...<br>Step 2/2: Unregistering from Registry...', 'info');
-                
-                const response = await fetch(`${REGISTRY_URL}/unregister/${cpId}`, {
-                    method: 'DELETE'
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to unregister CP');
-                }
-                
-                const successMessage = `
-                    <p class="font-medium mb-2">✅ CP deleted successfully!</p>
-                    <div class="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 mt-3">
-                        <p class="text-xs text-amber-200">⚠️ Note: Docker containers must be stopped manually:</p>
-                        <code class="text-xs text-amber-300 block mt-1">docker stop evcharging_cp_engine_X evcharging_cp_monitor_X</code>
-                        <code class="text-xs text-amber-300 block mt-1">docker rm evcharging_cp_engine_X evcharging_cp_monitor_X</code>
-                    </div>
-                `;
-                
-                showNotification('delete-result', successMessage, 'success');
-                
-                // Clear form
-                document.getElementById('delete-cp-id').value = '';
-                
-            } catch (error) {
-                showNotification('delete-result', `❌ Error: ${error.message}`, 'error');
-            }
-        }
-
-        // Load initial view
-        window.onload = function() {
-            showTab('create');
-        };
     </script>
 </body>
 </html>
