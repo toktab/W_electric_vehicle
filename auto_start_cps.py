@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-Auto-Start CPs - Simple version that just recreates containers from scratch
-Copies the EXACT logic from ev_cp_manager.py
+Auto-Start CPs - WITH PROPER ENCODING
 """
 
 import json
@@ -38,11 +37,36 @@ def load_registry():
     
     return cps
 
+def get_container_logs(container_name, lines=20):
+    """Get container logs with proper encoding handling"""
+    try:
+        # Use UTF-8 encoding explicitly
+        result = subprocess.run(
+            ["docker", "logs", "--tail", str(lines), container_name],
+            capture_output=True,
+            text=True,
+            encoding='utf-8',
+            errors='replace'  # Replace problematic characters
+        )
+        return result.stdout + result.stderr
+    except Exception as e:
+        return f"Error reading logs: {e}"
+
+def is_container_running(container_name):
+    """Check if container is running"""
+    try:
+        result = subprocess.run(
+            ["docker", "ps", "--filter", f"name={container_name}", "--format", "{{.Status}}"],
+            capture_output=True,
+            text=True,
+            encoding='utf-8'
+        )
+        return bool(result.stdout.strip())
+    except:
+        return False
+
 def create_cp_containers(cp_id, latitude, longitude, price, cp_num):
-    """
-    Create Engine and Monitor containers for a CP
-    THIS IS COPIED EXACTLY FROM ev_cp_manager.py
-    """
+    """Create Engine and Monitor containers for a CP"""
     cp_port = 6000 + cp_num
     
     engine_name = f"evcharging_cp_engine_{cp_num}"
@@ -50,14 +74,14 @@ def create_cp_containers(cp_id, latitude, longitude, price, cp_num):
     
     print(f"   🔧 Creating containers for {cp_id}...")
     
-    # STEP 1: Force remove any existing containers (in case they exist)
+    # STEP 1: Force remove any existing containers
     print(f"   🗑️  Removing old containers if they exist...")
     subprocess.run(["docker", "rm", "-f", engine_name], 
                    capture_output=True, text=True)
     subprocess.run(["docker", "rm", "-f", monitor_name], 
                    capture_output=True, text=True)
     
-    # STEP 2: Create Engine container (EXACTLY like cp_manager.py)
+    # STEP 2: Create Engine container
     print(f"   🚀 Creating {engine_name}...")
     engine_cmd = [
         "docker", "run", "-d",
@@ -72,16 +96,17 @@ def create_cp_containers(cp_id, latitude, longitude, price, cp_num):
         "central", "5000"
     ]
     
-    result = subprocess.run(engine_cmd, capture_output=True, text=True)
+    result = subprocess.run(engine_cmd, capture_output=True, text=True, encoding='utf-8')
     if result.returncode != 0:
         print(f"   ❌ Failed to create engine: {result.stderr}")
         return False
     
     print(f"   ✅ Engine created: {engine_name}")
-    time.sleep(2)
+    time.sleep(3)
     
-    # STEP 3: Create Monitor container (EXACTLY like cp_manager.py)
+    # STEP 3: Create Monitor container
     print(f"   🔍 Creating {monitor_name}...")
+    
     monitor_cmd = [
         "docker", "run", "-d",
         "--name", monitor_name,
@@ -94,15 +119,35 @@ def create_cp_containers(cp_id, latitude, longitude, price, cp_num):
         "central", "5000"
     ]
     
-    result = subprocess.run(monitor_cmd, capture_output=True, text=True)
+    result = subprocess.run(monitor_cmd, capture_output=True, text=True, encoding='utf-8')
     if result.returncode != 0:
         print(f"   ❌ Failed to create monitor: {result.stderr}")
-        # Clean up engine if monitor fails
         subprocess.run(["docker", "rm", "-f", engine_name], 
                        capture_output=True, text=True)
         return False
     
     print(f"   ✅ Monitor created: {monitor_name}")
+    
+    # STEP 4: Wait and check if both containers are still running
+    print(f"   ⏳ Waiting 5 seconds to verify containers...")
+    time.sleep(5)
+    
+    engine_running = is_container_running(engine_name)
+    monitor_running = is_container_running(monitor_name)
+    
+    if not engine_running:
+        print(f"   ❌ WARNING: Engine {engine_name} stopped!")
+        print(f"   📋 Engine logs:")
+        print(get_container_logs(engine_name))
+        return False
+    
+    if not monitor_running:
+        print(f"   ❌ WARNING: Monitor {monitor_name} stopped!")
+        print(f"   📋 Monitor logs:")
+        print(get_container_logs(monitor_name))
+        return False
+    
+    print(f"   ✅ Both containers running successfully")
     return True
 
 def main():
@@ -126,7 +171,6 @@ def main():
     if not cps:
         print("ℹ️  No CPs found in registry")
         print("   System will start with ZERO CPs")
-        print("   Use CP Manager to create CPs: docker attach evcharging_cp_manager")
         return 0
     
     print(f"📋 Found {len(cps)} CP(s) in registry:")
@@ -165,9 +209,9 @@ def main():
         return 1
     
     print("🎉 All CPs from registry are now ACTIVATED!")
-    print("\n💡 Tip: Wait 15 seconds for CPs to connect to Central")
-    print("💡 Check status: docker ps")
-    print("💡 View logs: docker logs evcharging_cp_engine_1")
+    print("\n💡 Check status: docker ps")
+    print("💡 View engine logs: docker logs evcharging_cp_engine_1")
+    print("💡 View monitor logs: docker logs evcharging_cp_monitor_1")
     
     return 0
 
