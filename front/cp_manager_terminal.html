@@ -25,9 +25,9 @@
         .ansi-purple { color: #a855f7; }
     </style>
 </head>
-<body class="bg-neutral-950 text-neutral-100 min-h-screen antialiased overflow-x-hidden" style="font-family: 'Inter', sans-serif;">
+<body class="bg-neutral-950 text-neutral-100 h-screen overflow-hidden flex flex-col" style="font-family: 'Inter', sans-serif;">
     
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 flex flex-col min-h-0">
         
         <!-- Header -->
         <header class="flex items-center justify-between mb-10">
@@ -53,7 +53,7 @@
         </header>
 
         <!-- Terminal Window -->
-        <div class="glass rounded-2xl overflow-hidden">
+        <div class="glass rounded-2xl flex flex-col" style="width:578.81px; height:469px;">
             <!-- Terminal Titlebar -->
             <div class="bg-neutral-900 px-4 py-2 flex items-center justify-between border-b border-neutral-800">
                 <div class="flex items-center gap-2">
@@ -70,7 +70,7 @@
             </div>
             
             <!-- Terminal Output -->
-            <div id="terminal-output" class="terminal-output text-sm p-4 h-[600px] overflow-y-auto bg-neutral-950 text-emerald-400">
+            <div id="terminal-output" class="terminal-output text-sm p-4 flex-1 min-h-0 overflow-y-auto bg-neutral-950 text-emerald-400">
                 <div class="text-neutral-500">Connecting to CP Manager...</div>
             </div>
             
