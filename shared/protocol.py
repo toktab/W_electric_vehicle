@@ -123,4 +123,8 @@ class MessageTypes:
 
     AUTHENTICATE = "AUTHENTICATE"      # CP → Central (with credentials)
     AUTHENTICATED = "AUTHENTICATED"    # Central → CP (success with key)
+
+    VALIDATE_DRIVER = "VALIDATE_DRIVER"    # CP → Central (check driver)
+    DRIVER_VALID = "DRIVER_VALID"          # Central → CP (exists)
+    DRIVER_INVALID = "DRIVER_INVALID"      # Central → CP (doesn't exist)
     

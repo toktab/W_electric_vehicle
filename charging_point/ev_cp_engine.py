@@ -419,6 +419,13 @@ class EVCPEngine:
                         continue
                     
                     driver_id = input("Enter Driver ID (e.g., DRIVER-001): ").strip()
+                    
+                    # 🔥 VALIDATE DRIVER EXISTS
+                    if not self._validate_driver(driver_id):
+                        print(f"\n❌ Driver '{driver_id}' not found in system!")
+                        print("💡 Valid drivers are registered in data/drivers.txt")
+                        continue
+                    
                     kwh_str = input("Enter kWh needed (default 10): ").strip()
                     
                     try:
@@ -453,6 +460,37 @@ class EVCPEngine:
 
             except Exception as e:
                 print(f"\n❌ Menu error: {e}")
+
+    def _validate_driver(self, driver_id):
+        """Check if driver exists in Central's system"""
+        try:
+            # Send validation request to Central
+            validate_msg = Protocol.encode(
+                Protocol.build_message(
+                    "VALIDATE_DRIVER",
+                    driver_id
+                )
+            )
+            
+            self.central_socket.send(validate_msg)
+            
+            # Wait for response (2 second timeout)
+            self.central_socket.settimeout(2)
+            response = self.central_socket.recv(4096)
+            self.central_socket.settimeout(None)
+            
+            if response:
+                msg, valid = Protocol.decode(response)
+                if valid:
+                    fields = Protocol.parse_message(msg)
+                    # DRIVER_VALID or DRIVER_INVALID
+                    return fields[0] == "DRIVER_VALID"
+            
+            return False
+        except:
+            # If validation fails, assume valid (fail-open)
+            print("⚠️  Could not validate driver, proceeding anyway...")
+            return True
 
     def run(self):
         """Run the CP engine"""

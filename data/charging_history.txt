@@ -4,3 +4,4 @@
 {"timestamp": "2026-01-09T21:51:02.636321", "cp_id": "CP-002", "driver_id": "DRIVER-001", "kwh_delivered": 10.0, "total_amount": 5.0, "duration_seconds": 0}
 {"timestamp": "2026-01-10T11:39:34.732949", "cp_id": "CP-001", "driver_id": "DRIVER-001", "kwh_delivered": 15.0, "total_amount": 7.5, "duration_seconds": 19}
 {"timestamp": "2026-01-10T13:08:11.685000", "cp_id": "CP-001", "driver_id": "DRIVER-001", "kwh_delivered": 10.0, "total_amount": 3.0, "duration_seconds": 27}
+{"timestamp": "2026-01-10T15:46:59.501708", "cp_id": "CP-001", "driver_id": "DRIVER-001", "kwh_delivered": 10.0, "total_amount": 3.0, "duration_seconds": 30}

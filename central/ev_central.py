@@ -229,6 +229,23 @@ class EVCentral:
             except:
                 pass
 
+    def _handle_validate_driver(self, fields, client_socket):
+        """Check if driver exists"""
+        driver_id = fields[1]
+        
+        with self.lock:
+            exists = driver_id in self.drivers
+        
+        response_type = "DRIVER_VALID" if exists else "DRIVER_INVALID"
+        response = Protocol.encode(
+            Protocol.build_message(response_type, driver_id)
+        )
+        
+        try:
+            client_socket.send(response)
+        except:
+            pass
+
     def _load_stored_cps(self):
         """Load charging points from file on startup"""
         stored_cps = self.storage.get_all_cps()
@@ -377,6 +394,8 @@ class EVCentral:
 
         if msg_type == MessageTypes.AUTHENTICATE:
             self._handle_authenticate(fields, client_socket, client_id)
+        elif msg_type == MessageTypes.VALIDATE_DRIVER:
+            self._handle_validate_driver(fields, client_socket)
         elif msg_type == MessageTypes.REGISTER:
             self._handle_register(fields, client_socket, client_id)
         elif msg_type == MessageTypes.HEARTBEAT:
