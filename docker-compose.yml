@@ -181,7 +181,7 @@ services:
     tty: true
     restart: unless-stopped
 
-# ============================================================================
+  # ============================================================================
   # CP Manager - Interactive Control Panel WITH WEBSOCKET
   # ============================================================================
   cp_manager:
@@ -195,10 +195,11 @@ services:
       - registry
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./data:/app/data  # 🔥 ADD THIS LINE - Mount data folder
     networks:
       - evcharging_net
     ports:
-      - "8082:8082"  # NEW: WebSocket port
+      - "8082:8082"  # WebSocket port
     stdin_open: true
     tty: true
     restart: unless-stopped

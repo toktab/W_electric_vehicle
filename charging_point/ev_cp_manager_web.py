@@ -171,7 +171,9 @@ class CPManagerTerminal:
                 output += self.format_output(f"   Username: {data['username']}", 'white') + "\n"
                 output += self.format_output(f"   Password: {data['password']}", 'white') + "\n"
                 
-                # 🔥 NEW: Save credentials locally
+                # Replace the credentials saving section (around line 220) with this:
+
+                # 🔥 SAVE CREDENTIALS LOCALLY
                 credentials = {
                     "username": data['username'],
                     "password": data['password']
@@ -180,14 +182,36 @@ class CPManagerTerminal:
                 try:
                     import os
                     import json
-                    os.makedirs('data', exist_ok=True)
-                    creds_file = f"data/{cp_id}_credentials.json"
                     
+                    # Debug: Print current working directory
+                    cwd = os.getcwd()
+                    print(f"\n[DEBUG] Current working directory: {cwd}")
+                    
+                    # Create data directory
+                    os.makedirs('/app/data', exist_ok=True)
+                    print(f"[DEBUG] Created/verified /app/data directory")
+                    
+                    # Define credentials file path
+                    creds_file = f"/app/data/{cp_id}_credentials.json"
+                    print(f"[DEBUG] Credentials file path: {creds_file}")
+                    
+                    # Write credentials
                     with open(creds_file, 'w') as f:
                         json.dump(credentials, f, indent=2)
                     
-                    output += self.format_output(f'   💾 Credentials saved to {creds_file}', 'cyan') + "\n"
+                    # Verify file exists
+                    if os.path.exists(creds_file):
+                        file_size = os.path.getsize(creds_file)
+                        print(f"[DEBUG] ✅ File created successfully: {creds_file} ({file_size} bytes)")
+                        output += self.format_output(f'   💾 Credentials saved to {creds_file}', 'cyan') + "\n"
+                    else:
+                        print(f"[DEBUG] ❌ File NOT found after writing!")
+                        output += self.format_output(f'   ⚠️  File not found after writing!', 'red') + "\n"
+                        
                 except Exception as e:
+                    print(f"[DEBUG] ❌ Exception saving credentials: {e}")
+                    import traceback
+                    traceback.print_exc()
                     output += self.format_output(f'   ⚠️  Failed to save credentials: {e}', 'yellow') + "\n"
                 
             else:
