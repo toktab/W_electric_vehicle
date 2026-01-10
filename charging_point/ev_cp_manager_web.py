@@ -170,6 +170,26 @@ class CPManagerTerminal:
                 output += self.format_output('✅ Registered successfully!', 'green') + "\n"
                 output += self.format_output(f"   Username: {data['username']}", 'white') + "\n"
                 output += self.format_output(f"   Password: {data['password']}", 'white') + "\n"
+                
+                # 🔥 NEW: Save credentials locally
+                credentials = {
+                    "username": data['username'],
+                    "password": data['password']
+                }
+                
+                try:
+                    import os
+                    import json
+                    os.makedirs('data', exist_ok=True)
+                    creds_file = f"data/{cp_id}_credentials.json"
+                    
+                    with open(creds_file, 'w') as f:
+                        json.dump(credentials, f, indent=2)
+                    
+                    output += self.format_output(f'   💾 Credentials saved to {creds_file}', 'cyan') + "\n"
+                except Exception as e:
+                    output += self.format_output(f'   ⚠️  Failed to save credentials: {e}', 'yellow') + "\n"
+                
             else:
                 error = response.json()
                 raise Exception(error.get('error', 'Registration failed'))
@@ -191,14 +211,19 @@ class CPManagerTerminal:
             subprocess.run(["docker", "rm", "-f", engine_name], capture_output=True)
             subprocess.run(["docker", "rm", "-f", monitor_name], capture_output=True)
             
-            # Create Engine with CORRECT network
+            # Get absolute path to data folder
+            import os
+            data_path = os.path.abspath("data")
+            
+            # Create Engine with CORRECT network and DATA VOLUME
             output += self.format_output(f"   🔧 Creating {engine_name}...", 'white') + "\n"
             engine_cmd = [
                 "docker", "run", "-d",
                 "--name", engine_name,
-                "--network", self.network_name,  # ✅ CORRECT NETWORK!
+                "--network", self.network_name,
                 "-p", f"{cp_port}:{cp_port}",
                 "-e", "KAFKA_BROKER=kafka:9092",
+                "-v", f"{data_path}:/app/data",  # 🔥 MOUNT DATA FOLDER
                 "-it", "evcharging-cp",
                 "python", "charging_point/ev_cp_engine.py",
                 cp_id, str(lat), str(lon), str(price), "central", "5000"
@@ -212,13 +237,14 @@ class CPManagerTerminal:
             
             await asyncio.sleep(2)
             
-            # Create Monitor with CORRECT network
+            # Create Monitor with CORRECT network and DATA VOLUME
             output += self.format_output(f"   🔍 Creating {monitor_name}...", 'white') + "\n"
             monitor_cmd = [
                 "docker", "run", "-d",
                 "--name", monitor_name,
-                "--network", self.network_name,  # ✅ CORRECT NETWORK!
+                "--network", self.network_name,
                 "-e", "KAFKA_BROKER=kafka:9092",
+                "-v", f"{data_path}:/app/data",  # 🔥 MOUNT DATA FOLDER
                 "-it", "evcharging-cp",
                 "python", "charging_point/ev_cp_monitor.py",
                 cp_id, engine_name, str(cp_port), "central", "5000"
@@ -237,6 +263,7 @@ class CPManagerTerminal:
             output += f"{self.format_output('║', 'green')}  {self.format_output(f'✅ {cp_id} READY FOR CHARGING!', 'green')}                               {self.format_output('║', 'green')}\n"
             output += f"{self.format_output('╚══════════════════════════════════════════════════════════════╝', 'green')}\n"
             output += f"\n{self.format_output('💡 Refresh the dashboard to see it ACTIVATED!', 'cyan')}\n"
+            output += f"\n{self.format_output(f'💾 Credentials saved: data/{cp_id}_credentials.json', 'cyan')}\n"
             
         except Exception as e:
             output += f"\n{self.format_output(f'❌ Error: {e}', 'red')}\n"

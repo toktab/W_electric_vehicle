@@ -7,6 +7,7 @@ import threading
 import time
 import sys
 import os
+import json
 import requests  # ADD THIS if not already there
 from config import CP_BASE_PORT, HEALTH_CHECK_INTERVAL
 from shared.protocol import Protocol, MessageTypes
@@ -54,52 +55,35 @@ class EVCPMonitor:
     def _fetch_credentials_from_registry(self):
         """
         Fetch credentials from Registry for this CP
+        First checks local storage, then Registry if needed
         Returns: dict with username and password, or None if failed
         """
-        print(f"[{self.cp_id} Monitor] 🔑 Fetching credentials from Registry...")
+        # Path to local credentials file
+        creds_file = f"data/{self.cp_id}_credentials.json"
+        
+        # STEP 1: Try to read from local file first
+        if os.path.exists(creds_file):
+            try:
+                with open(creds_file, 'r') as f:
+                    import json
+                    creds = json.load(f)
+                    print(f"[{self.cp_id} Monitor] 🔑 Using stored credentials from {creds_file}")
+                    print(f"[{self.cp_id} Monitor]    Username: {creds['username']}")
+                    return creds
+            except Exception as e:
+                print(f"[{self.cp_id} Monitor] ⚠️  Failed to read stored credentials: {e}")
+                print(f"[{self.cp_id} Monitor] 🔄 Will try to register with Registry...")
+        
+        # STEP 2: No local file found, try to register with Registry
+        print(f"[{self.cp_id} Monitor] 🔑 No stored credentials found, registering with Registry...")
         
         try:
-            # Check if CP is registered
-            response = requests.get(f"{self.registry_url}/list", timeout=10)
-            
-            if response.status_code != 200:
-                print(f"[{self.cp_id} Monitor] ❌ Registry not responding")
-                return None
-            
-            data = response.json()
-            cps = data.get("charging_points", [])
-            
-            # Find this CP in the list
-            for cp in cps:
-                if cp['cp_id'] == self.cp_id:
-                    # Found! But Registry doesn't return password
-                    # We need to register to get credentials
-                    print(f"[{self.cp_id} Monitor] ℹ️  CP already registered, using existing credentials")
-                    
-                    # In real system, credentials would be stored locally
-                    # For now, we need to re-register to get password
-                    # This is a simplification for the lab
-                    
-                    # Option 1: Register again (will fail if exists)
-                    # Option 2: Store credentials locally after first registration
-                    
-                    # For this demo, let's assume CP was created via CP Manager
-                    # which means Registry has credentials
-                    # We'll need to modify this...
-                    
-                    print(f"[{self.cp_id} Monitor] ⚠️  Credentials should be stored locally")
-                    print(f"[{self.cp_id} Monitor] ⚠️  For lab: Re-registering to get password")
-                    
-                    # Break and try to register
-                    break
-            
-            # Register with Registry to get credentials
-            # (In production, this would only happen once and credentials stored)
-            lat = "40.5"  # Default values
+            # Default location values
+            lat = "40.5"
             lon = "-3.1"
             price = 0.30
             
-            # Try to extract from CP_ID if possible
+            # Try to extract CP number for unique location
             try:
                 cp_num = int(self.cp_id.split('-')[1])
                 lat = str(40.5 + (cp_num * 0.1))
@@ -107,6 +91,7 @@ class EVCPMonitor:
             except:
                 pass
             
+            # Register with Registry
             register_response = requests.post(
                 f"{self.registry_url}/register",
                 json={
@@ -119,28 +104,33 @@ class EVCPMonitor:
             )
             
             if register_response.status_code == 201:
-                # New registration successful
+                # ✅ New registration successful!
                 reg_data = register_response.json()
                 credentials = {
                     "username": reg_data['username'],
                     "password": reg_data['password']
                 }
-                print(f"[{self.cp_id} Monitor] ✅ Got credentials from Registry")
+                print(f"[{self.cp_id} Monitor] ✅ Got NEW credentials from Registry")
                 print(f"[{self.cp_id} Monitor]    Username: {credentials['username']}")
+                print(f"[{self.cp_id} Monitor]    Password: {credentials['password'][:8]}...")
+                
+                # STEP 3: Save credentials locally for next time
+                try:
+                    os.makedirs("data", exist_ok=True)
+                    with open(creds_file, 'w') as f:
+                        import json
+                        json.dump(credentials, f, indent=2)
+                    print(f"[{self.cp_id} Monitor] 💾 Credentials saved to {creds_file}")
+                except Exception as e:
+                    print(f"[{self.cp_id} Monitor] ⚠️  Failed to save credentials: {e}")
+                
                 return credentials
             
             elif register_response.status_code == 409:
-                # Already registered - this is expected
-                print(f"[{self.cp_id} Monitor] ℹ️  CP already in Registry")
-                
-                # PROBLEM: We can't get the password again!
-                # Solution: For lab purposes, we'll use a workaround
-                # In production: credentials would be stored in a config file
-                
-                print(f"[{self.cp_id} Monitor] ⚠️  LIMITATION: Cannot retrieve existing password")
-                print(f"[{self.cp_id} Monitor] ⚠️  For lab: CPs should be created fresh each time")
-                
-                # For now, return None - CP must be created fresh
+                # ❌ Already registered but no local credentials
+                print(f"[{self.cp_id} Monitor] ⚠️  CP already registered in Registry")
+                print(f"[{self.cp_id} Monitor] ❌ Cannot retrieve existing password from Registry")
+                print(f"[{self.cp_id} Monitor] 💡 Solution: Delete data/registry.txt and restart")
                 return None
             
             else:

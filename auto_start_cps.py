@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Auto-Start CPs - WITH PROPER ENCODING
+Auto-Start CPs - FIXED VERSION
+Only starts CPs that have local credentials saved
 """
 
 import json
@@ -37,16 +38,20 @@ def load_registry():
     
     return cps
 
+def has_credentials(cp_id):
+    """Check if CP has saved credentials"""
+    creds_file = f"data/{cp_id}_credentials.json"
+    return os.path.exists(creds_file)
+
 def get_container_logs(container_name, lines=20):
     """Get container logs with proper encoding handling"""
     try:
-        # Use UTF-8 encoding explicitly
         result = subprocess.run(
             ["docker", "logs", "--tail", str(lines), container_name],
             capture_output=True,
             text=True,
             encoding='utf-8',
-            errors='replace'  # Replace problematic characters
+            errors='replace'
         )
         return result.stdout + result.stderr
     except Exception as e:
@@ -89,6 +94,7 @@ def create_cp_containers(cp_id, latitude, longitude, price, cp_num):
         "--network", NETWORK,
         "-p", f"{cp_port}:{cp_port}",
         "-e", "KAFKA_BROKER=kafka:9092",
+        "-v", f"{os.getcwd()}/data:/app/data",  # 🔥 MOUNT DATA FOLDER
         "-it",
         "evcharging-cp",
         "python", "charging_point/ev_cp_engine.py",
@@ -112,6 +118,7 @@ def create_cp_containers(cp_id, latitude, longitude, price, cp_num):
         "--name", monitor_name,
         "--network", NETWORK,
         "-e", "KAFKA_BROKER=kafka:9092",
+        "-v", f"{os.getcwd()}/data:/app/data",  # 🔥 MOUNT DATA FOLDER
         "-it",
         "evcharging-cp",
         "python", "charging_point/ev_cp_monitor.py",
@@ -171,17 +178,41 @@ def main():
     if not cps:
         print("ℹ️  No CPs found in registry")
         print("   System will start with ZERO CPs")
+        print("   Use CP Manager to create CPs: http://localhost:8081/cp_manager_terminal.html")
         return 0
     
     print(f"📋 Found {len(cps)} CP(s) in registry:")
     for cp in cps:
-        print(f"   • {cp.get('cp_id')} at ({cp.get('latitude')}, {cp.get('longitude')})")
+        cp_id = cp.get('cp_id')
+        has_creds = has_credentials(cp_id)
+        status = "✅ Has credentials" if has_creds else "⚠️  No credentials"
+        print(f"   • {cp_id} at ({cp.get('latitude')}, {cp.get('longitude')}) - {status}")
     
-    print("\n🔨 Creating fresh containers for all CPs...\n")
+    # Filter CPs that have credentials
+    cps_with_creds = [cp for cp in cps if has_credentials(cp.get('cp_id'))]
+    cps_without_creds = [cp for cp in cps if not has_credentials(cp.get('cp_id'))]
     
-    # Process each CP
+    if cps_without_creds:
+        print(f"\n⚠️  WARNING: {len(cps_without_creds)} CP(s) have no saved credentials:")
+        for cp in cps_without_creds:
+            cp_id = cp.get('cp_id')
+            print(f"   • {cp_id} - Will be SKIPPED (create via CP Manager instead)")
+    
+    if not cps_with_creds:
+        print("\n❌ No CPs with credentials found!")
+        print("   All CPs in registry were created via web interface")
+        print("   They need to be recreated to save credentials")
+        print("\n💡 Solution:")
+        print("   1. Delete data/registry.txt")
+        print("   2. Restart system")
+        print("   3. Create CPs using CP Manager")
+        return 0
+    
+    print(f"\n🔨 Creating containers for {len(cps_with_creds)} CP(s) with credentials...\n")
+    
+    # Process each CP that has credentials
     success_count = 0
-    for cp_data in cps:
+    for cp_data in cps_with_creds:
         cp_id = cp_data.get('cp_id')
         latitude = cp_data.get('latitude', '40.5')
         longitude = cp_data.get('longitude', '-3.1')
@@ -202,13 +233,17 @@ def main():
             print(f"❌ {cp_id} failed!\n")
     
     # Summary
-    print_header(f"✅ AUTO-START COMPLETE: {success_count}/{len(cps)} CPs ready")
+    print_header(f"✅ AUTO-START COMPLETE: {success_count}/{len(cps_with_creds)} CPs ready")
     
-    if success_count < len(cps):
+    if success_count < len(cps_with_creds):
         print("⚠️  Some CPs failed to start. Check logs above.")
         return 1
     
-    print("🎉 All CPs from registry are now ACTIVATED!")
+    if cps_without_creds:
+        print(f"\n💡 {len(cps_without_creds)} CP(s) were skipped (no credentials)")
+        print("   Recreate them using CP Manager to save credentials")
+    
+    print("\n🎉 All CPs with credentials are now ACTIVATED!")
     print("\n💡 Check status: docker ps")
     print("💡 View engine logs: docker logs evcharging_cp_engine_1")
     print("💡 View monitor logs: docker logs evcharging_cp_monitor_1")
