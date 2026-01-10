@@ -7,24 +7,6 @@ Status: IN PROGRESS
 CURRENT BLOCKING BUG (FIX FIRST!)
 ==================================
 
-BUG-001: CP Persistence Problem
-Status: NOT FIXED
-Priority: CRITICAL - FIX BEFORE ANYTHING ELSE
-File: BUG-001-CP-PERSISTENCE.txt
-
-Problem:
-- CP-001 always exists on startup (hardcoded somewhere)
-- When you create CP-002 or CP-003, they work fine
-- BUT when you restart the system, they show as "DISCONNECTED"
-- They don't reconnect automatically
-
-Why this breaks everything:
-- Can't test multiple CPs properly
-- Can't demonstrate scalability
-- Can't show dynamic CP creation/deletion working correctly
-
-Estimated time: 2-3 hours
-
 CRITICAL TASKS (Required for passing)
 ======================================
 
