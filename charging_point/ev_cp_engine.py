@@ -1,5 +1,5 @@
 # ============================================================================
-# EVCharging System - EV_CP_E (Charging Point Engine) - UPDATED DISPLAY
+# EVCharging System - EV_CP_E (Charging Point Engine) - WITH CHARGE REQUEST
 # ============================================================================
 
 import socket
@@ -29,7 +29,7 @@ class EVCPEngine:
         self.state = CP_STATES["ACTIVATED"]
         self.current_driver = None
         self.current_session = None
-        self.charging_complete = False  # NEW: Track when 100% reached
+        self.charging_complete = False
 
         self.central_socket = None
         self.monitor_socket = None
@@ -51,7 +51,7 @@ class EVCPEngine:
             self.central_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.central_socket.connect((self.central_host, self.central_port))
 
-            # Register with CENTRAL (Engine registers separately from Monitor auth)
+            # Register with CENTRAL
             register_msg = Protocol.encode(
                 Protocol.build_message(
                     "REGISTER", "CP", self.cp_id,
@@ -270,6 +270,32 @@ class EVCPEngine:
                 
                 print(f"[{self.cp_id}] → AVAILABLE\n")
 
+    def request_charge_for_driver(self, driver_id, kwh_needed):
+        """
+        NEW FEATURE: Request charging on behalf of a driver
+        This simulates the driver connecting to this CP
+        """
+        print(f"\n[{self.cp_id}] 📤 Requesting charge for {driver_id}...")
+        
+        request_msg = Protocol.encode(
+            Protocol.build_message(
+                "REQUEST_CHARGE",
+                driver_id,
+                self.cp_id,
+                kwh_needed
+            )
+        )
+        
+        try:
+            self.central_socket.send(request_msg)
+            print(f"[{self.cp_id}] ✅ Charge request sent to CENTRAL")
+            print(f"[{self.cp_id}]    Driver: {driver_id}")
+            print(f"[{self.cp_id}]    kWh: {kwh_needed}")
+            return True
+        except Exception as e:
+            print(f"[{self.cp_id}] ❌ Failed to send request: {e}")
+            return False
+
     def stop_charging(self):
         """Simulate driver unplugging vehicle from CP"""
         with self.lock:
@@ -374,12 +400,59 @@ class EVCPEngine:
         """Display interactive menu for CP operations"""
         while self.running:
             try:
-                time.sleep(0.5)  # Small delay to allow other threads to print
-                
-                # Just wait, status is displayed by status_display_loop
-                
+                print(f"\n{'='*60}")
+                print(f"[{self.cp_id} ENGINE MENU]")
+                print(f"{'='*60}")
+                print("\nOptions:")
+                print("  1. Request charge for driver (simulate driver)")
+                print("  2. View status")
+                print("  3. Stop charging (unplug)")
+                print("  4. Exit")
+                print(f"{'='*60}")
+
+                choice = input("\nChoice (1-4): ").strip()
+
+                if choice == "1":
+                    # NEW FEATURE: Request charge from Engine
+                    if self.state != CP_STATES["ACTIVATED"]:
+                        print(f"\n❌ CP not available (status: {self.state})")
+                        continue
+                    
+                    driver_id = input("Enter Driver ID (e.g., DRIVER-001): ").strip()
+                    kwh_str = input("Enter kWh needed (default 10): ").strip()
+                    
+                    try:
+                        kwh = float(kwh_str) if kwh_str else 10
+                        self.request_charge_for_driver(driver_id, kwh)
+                    except ValueError:
+                        print("❌ Invalid kWh value")
+
+                elif choice == "2":
+                    with self.lock:
+                        print(f"\n  Status: {self.state}")
+                        if self.current_driver:
+                            print(f"  Current Driver: {self.current_driver}")
+                            if self.current_session:
+                                print(f"  kWh Delivered: {self.current_session['kwh_delivered']:.2f}")
+                                print(f"  Amount: {self.current_session['amount']:.2f}€")
+                        print()
+
+                elif choice == "3":
+                    if self.stop_charging():
+                        print("✅ Charging stopped")
+                    else:
+                        print("❌ Not currently charging")
+
+                elif choice == "4":
+                    print("\nExiting...")
+                    self.running = False
+                    break
+
+                else:
+                    print("\n❌ Invalid choice. Please enter 1-4")
+
             except Exception as e:
-                print(f"Menu error: {e}")
+                print(f"\n❌ Menu error: {e}")
 
     def run(self):
         """Run the CP engine"""
