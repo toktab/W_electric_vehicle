@@ -442,10 +442,11 @@
                     return;
                 }
 
+                // CHANGE TO (add onclick):
                 driversList.innerHTML = data.drivers.map(driver => {
                     const isCharging = driver.status === 'CHARGING';
                     return `
-                        <div class="group flex items-center justify-between p-3 rounded-xl ${isCharging ? 'bg-gradient-to-r from-blue-500/10 to-transparent border border-blue-500/20' : 'bg-neutral-800/20 border border-transparent'} hover:bg-neutral-800/40 transition-all cursor-pointer">
+                        <div onclick="openDriverConsole('${driver.driver_id}')" class="group flex items-center justify-between p-3 rounded-xl ${isCharging ? 'bg-gradient-to-r from-blue-500/10 to-transparent border border-blue-500/20' : 'bg-neutral-800/20 border border-transparent'} hover:bg-neutral-800/40 transition-all cursor-pointer">
                             <div class="flex items-center gap-3">
                                 <div class="w-8 h-8 rounded-lg ${isCharging ? 'bg-blue-500/20' : 'bg-neutral-700/50'} flex items-center justify-center ${isCharging ? 'car-bounce' : ''}">
                                     <span class="iconify ${isCharging ? 'text-blue-400' : 'text-neutral-500'}" data-icon="lucide:car" data-width="16" data-height="16" style="stroke-width: 1.5;"></span>
@@ -571,6 +572,14 @@
             updateAll();
             setInterval(updateAll, 1000);
         });
+
+        function openDriverConsole(driverId) {
+            window.open(`driver_console.html?driver=${driverId}`, '_blank', 'width=1200,height=800');
+        }
+
+        function openCPConsole(cpId) {
+            window.open(`cp_console.html?cp=${cpId}`, '_blank', 'width=1800,height=900');
+        }
     </script>
 </body>
 </html>
