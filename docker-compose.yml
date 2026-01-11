@@ -204,6 +204,45 @@ services:
     tty: true
     restart: unless-stopped
 
+  cp_engine_bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile.bridges
+    container_name: evcharging_cp_engine_bridge
+    command: python charging_point/ev_cp_engine_web.py
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - evcharging_net
+    ports:
+      - "8083:8083"
+
+  cp_monitor_bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile.bridges
+    container_name: evcharging_cp_monitor_bridge
+    command: python charging_point/ev_cp_monitor_web.py
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - evcharging_net
+    ports:
+      - "8084:8084"
+
+  driver_bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile.bridges
+    container_name: evcharging_driver_bridge
+    command: python driver/ev_driver_web.py
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - evcharging_net
+    ports:
+      - "8085:8085"
+
 # ============================================================================
 # Network definition
 # ============================================================================

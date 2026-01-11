@@ -1,0 +1,20 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install Docker CLI for container access
+RUN apt-get update && \
+    apt-get install -y docker.io && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+RUN pip install --no-cache-dir websockets docker
+
+# Copy bridge scripts
+COPY charging_point/*.py charging_point/
+COPY driver/*.py driver/
+
+ENV PYTHONUNBUFFERED=1
+
+# Default to engine bridge (can be overridden in docker-compose)
+CMD ["python", "charging_point/ev_cp_engine_web.py"]
