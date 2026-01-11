@@ -302,7 +302,7 @@ class CPManagerTerminal:
         try:
             cp_num = int(cp_id.split('-')[1])
             
-            output += f"\n{self.format_output('🛑 Step 1/2: Stopping containers...', 'yellow')}\n"
+            output += f"\n{self.format_output('🛑 Step 1/3: Stopping containers...', 'amber-400')}\n"
             
             engine_name = f"evcharging_cp_engine_{cp_num}"
             monitor_name = f"evcharging_cp_monitor_{cp_num}"
@@ -314,20 +314,36 @@ class CPManagerTerminal:
             
             output += self.format_output('   ✅ Containers removed', 'green') + "\n"
             
-            output += f"\n{self.format_output('📝 Step 2/2: Unregistering from Registry...', 'blue')}\n"
+            output += f"\n{self.format_output('📝 Step 2/3: Deleting credentials file...', 'blue-400')}\n"
+            
+            # 🔥 DELETE CREDENTIALS FILE
+            creds_file = f"/app/data/{cp_id}_credentials.json"
+            try:
+                import os
+                if os.path.exists(creds_file):
+                    os.remove(creds_file)
+                    output += self.format_output(f'   ✅ Deleted {creds_file}', 'green') + "\n"
+                else:
+                    output += self.format_output(f'   ⚠️  No credentials file found', 'yellow') + "\n"
+            except Exception as e:
+                output += self.format_output(f'   ⚠️  Failed to delete credentials: {e}', 'yellow') + "\n"
+            
+            output += f"\n{self.format_output('📝 Step 3/3: Unregistering from Registry...', 'blue-400')}\n"
             
             response = requests.delete(f"{REGISTRY_URL}/unregister/{cp_id}", timeout=10)
             if response.status_code == 200:
-                output += self.format_output('   ✅ Unregistered', 'green') + "\n"
+                output += self.format_output('   ✅ Unregistered from Registry', 'green') + "\n"
             
-            output += f"\n{self.format_output('╔══════════════════════════════════════════════════════════════╗', 'green')}\n"
-            output += f"{self.format_output('║', 'green')}  {self.format_output(f'✅ {cp_id} COMPLETELY DELETED', 'green')}                               {self.format_output('║', 'green')}\n"
-            output += f"{self.format_output('╚══════════════════════════════════════════════════════════════╝', 'green')}\n"
+            output += f"\n{self.format_output('╔══════════════════════════════════════════════════════════════╗', 'emerald-400')}\n"
+            output += f"{self.format_output('║', 'emerald-400')}  {self.format_output(f'✅ {cp_id} COMPLETELY DELETED', 'emerald-400')}                               {self.format_output('║', 'emerald-400')}\n"
+            output += f"{self.format_output('╚══════════════════════════════════════════════════════════════╝', 'emerald-400')}\n"
+            output += f"\n{self.format_output('💾 Credentials file, containers, and registry entry removed', 'cyan')}\n"
             
         except Exception as e:
-            output += f"\n{self.format_output(f'❌ Error: {e}', 'red')}\n"
+            output += f"\n{self.format_output(f'❌ Error: {e}', 'red-400')}\n"
         
-        output += f"{self.format_output('────────────────────────────────────────────────────────────', 'purple')}\n"
+        self.state = 'MENU'
+        output += f"{self.format_output('────────────────────────────────────────────────────────────', 'neutral-500')}\n"
         return output
     
     async def show_cp_list(self):
