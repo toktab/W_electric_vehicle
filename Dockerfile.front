@@ -1,9 +1,13 @@
 FROM nginx:alpine
 
-# Copy dashboard files
+# Copy ALL dashboard files (this was the issue!)
 COPY front/index.html /usr/share/nginx/html/
 COPY front/cp_manager.html /usr/share/nginx/html/
 COPY front/cp_manager_terminal.html /usr/share/nginx/html/
+COPY front/cp_terminal.html /usr/share/nginx/html/
+COPY front/driver_terminal.html /usr/share/nginx/html/
+COPY front/cp_engine_monitor_terminal.html /usr/share/nginx/html/
+
 
 EXPOSE 80
 

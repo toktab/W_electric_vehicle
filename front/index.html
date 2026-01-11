@@ -20,22 +20,9 @@
             0% { background-position: 200% 0; }
             100% { background-position: -200% 0; }
         }
-        @keyframes rain {
-            0% { transform: translateY(-100%); opacity: 0; }
-            50% { opacity: 1; }
-            100% { transform: translateY(100%); opacity: 0; }
-        }
-        @keyframes lightning {
-            0%, 90%, 100% { opacity: 0; }
-            92%, 94% { opacity: 1; }
-        }
         @keyframes car-bounce {
             0%, 100% { transform: translateY(0) rotate(-1deg); }
             50% { transform: translateY(-3px) rotate(1deg); }
-        }
-        @keyframes energy-wave {
-            0% { transform: scaleX(0); opacity: 1; }
-            100% { transform: scaleX(1); opacity: 0; }
         }
         @keyframes spin-slow {
             from { transform: rotate(0deg); }
@@ -66,6 +53,16 @@
         .glow-green { filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.5)); }
         .glow-blue { filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.5)); }
         .glow-amber { filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.5)); }
+        
+        /* Hover effect for clickable items */
+        .clickable-cp:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2);
+        }
+        .clickable-driver:hover {
+            transform: translateX(2px);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15);
+        }
     </style>
 </head>
 <body class="bg-neutral-950 text-neutral-100 min-h-screen antialiased overflow-x-hidden" style="font-family: 'Inter', sans-serif;">
@@ -194,7 +191,7 @@
                             </div>
                             <div>
                                 <h2 class="text-base font-semibold text-neutral-200">Charging Points</h2>
-                                <p class="text-xs text-neutral-500">Real-time station status</p>
+                                <p class="text-xs text-neutral-500">Click to open terminal</p>
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
@@ -223,7 +220,7 @@
                             </div>
                             <div>
                                 <h2 class="text-base font-semibold text-neutral-200">Drivers</h2>
-                                <p class="text-xs text-neutral-500">Fleet status</p>
+                                <p class="text-xs text-neutral-500">Click to open terminal</p>
                             </div>
                         </div>
                         <div id="drivers-list" class="space-y-2">
@@ -327,6 +324,37 @@
             document.getElementById('error-message').classList.toggle('hidden', !show);
         }
 
+        // Extract CP number from CP_ID (e.g., "CP-001" -> "1")
+        function getCPNumber(cpId) {
+            const match = cpId.match(/CP-(\d+)/);
+            return match ? parseInt(match[1]) : null;
+        }
+
+        // Extract driver number from DRIVER_ID (e.g., "DRIVER-001" -> "1", "DRIVER-AUTO" -> "auto")
+        function getDriverNumber(driverId) {
+            if (driverId.toLowerCase().includes('auto')) {
+                return 'auto';
+            }
+            const match = driverId.match(/DRIVER-(\d+)/);
+            return match ? parseInt(match[1]) : null;
+        }
+
+        // Navigate to CP terminal
+        function openCPTerminal(cpId) {
+            const cpNum = getCPNumber(cpId);
+            if (cpNum) {
+                window.location.href = `cp_engine_monitor_terminal.html?cp=${cpNum}`;
+            }
+        }
+
+        // Navigate to Driver terminal
+        function openDriverTerminal(driverId) {
+            const driverNum = getDriverNumber(driverId);
+            if (driverNum) {
+                window.location.href = `driver_terminal.html?driver=${driverNum}`;
+            }
+        }
+
         async function updateCPs() {
             try {
                 const response = await fetch(`${API_BASE}/cps`);
@@ -369,21 +397,25 @@
                     const iconData = icons[cp.state] || icons['ACTIVATED'];
                     
                     return `
-                        <div class="group relative bg-gradient-to-br ${gradients[cp.state] || gradients['ACTIVATED']} border border-neutral-800/50 rounded-xl p-4 hover:border-neutral-700/50 transition-all duration-300 hover:-translate-y-1 cursor-pointer ${isOffline ? 'opacity-50' : ''}">
+                        <div onclick="openCPTerminal('${cp.cp_id}')" class="clickable-cp group relative bg-gradient-to-br ${gradients[cp.state] || gradients['ACTIVATED']} border border-neutral-800/50 rounded-xl p-4 hover:border-blue-500/50 transition-all duration-300 cursor-pointer ${isOffline ? 'opacity-50' : ''}" title="Click to open ${cp.cp_id} terminal">
                             ${isCharging ? '<div class="absolute top-0 left-0 right-0 h-0.5 charge-flow rounded-t-xl"></div>' : ''}
                             <div class="flex items-center justify-between mb-4">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-lg bg-neutral-800/50 flex items-center justify-center ${isCharging ? 'animate-pulse' : ''}">
+                                    <div class="w-10 h-10 rounded-lg bg-neutral-800/50 flex items-center justify-center ${isCharging ? 'animate-pulse' : ''} group-hover:scale-110 transition-transform">
                                         <span class="iconify ${iconData.color} ${iconData.glow}" data-icon="${iconData.icon}" data-width="20" data-height="20" style="stroke-width: 1.5;"></span>
                                     </div>
                                     <div>
-                                        <div class="font-semibold text-sm">${cp.cp_id}</div>
+                                        <div class="font-semibold text-sm group-hover:text-blue-400 transition-colors">${cp.cp_id}</div>
                                         <div class="text-xs text-neutral-500">${cp.price_per_kwh}€/kWh</div>
                                     </div>
                                 </div>
                                 <div class="text-right">
                                     <div class="text-xs font-medium ${iconData.color}">${cp.state.replace('_', ' ')}</div>
                                     ${isCharging ? `<div class="text-xs text-neutral-500">${progress}%</div>` : ''}
+                                    <div class="text-xs text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity mt-1">
+                                        <span class="iconify inline-block" data-icon="lucide:external-link" data-width="12" data-height="12"></span>
+                                        Open
+                                    </div>
                                 </div>
                             </div>
                             ${isCharging ? `
@@ -445,12 +477,12 @@
                 driversList.innerHTML = data.drivers.map(driver => {
                     const isCharging = driver.status === 'CHARGING';
                     return `
-                        <div class="group flex items-center justify-between p-3 rounded-xl ${isCharging ? 'bg-gradient-to-r from-blue-500/10 to-transparent border border-blue-500/20' : 'bg-neutral-800/20 border border-transparent'} hover:bg-neutral-800/40 transition-all cursor-pointer">
+                        <div onclick="openDriverTerminal('${driver.driver_id}')" class="clickable-driver group flex items-center justify-between p-3 rounded-xl ${isCharging ? 'bg-gradient-to-r from-blue-500/10 to-transparent border border-blue-500/20' : 'bg-neutral-800/20 border border-transparent'} hover:bg-neutral-800/40 hover:border-amber-500/30 transition-all cursor-pointer" title="Click to open ${driver.driver_id} terminal">
                             <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-lg ${isCharging ? 'bg-blue-500/20' : 'bg-neutral-700/50'} flex items-center justify-center ${isCharging ? 'car-bounce' : ''}">
-                                    <span class="iconify ${isCharging ? 'text-blue-400' : 'text-neutral-500'}" data-icon="lucide:car" data-width="16" data-height="16" style="stroke-width: 1.5;"></span>
+                                <div class="w-8 h-8 rounded-lg ${isCharging ? 'bg-blue-500/20' : 'bg-neutral-700/50'} flex items-center justify-center ${isCharging ? 'car-bounce' : ''} group-hover:scale-110 transition-transform">
+                                    <span class="iconify ${isCharging ? 'text-blue-400' : 'text-neutral-500'} group-hover:text-amber-400" data-icon="lucide:car" data-width="16" data-height="16" style="stroke-width: 1.5;"></span>
                                 </div>
-                                <span class="text-sm font-medium">${driver.driver_id}</span>
+                                <span class="text-sm font-medium group-hover:text-amber-400 transition-colors">${driver.driver_id}</span>
                             </div>
                             <div class="flex items-center gap-2">
                                 ${isCharging ? `
@@ -459,6 +491,7 @@
                                 ` : `
                                     <span class="text-xs text-neutral-500">Idle</span>
                                 `}
+                                <span class="iconify text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1" data-icon="lucide:external-link" data-width="12" data-height="12"></span>
                             </div>
                         </div>
                     `;
