@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CP Console - EV Charging</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+    <style>
+        @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+        @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.3); } 50% { box-shadow: 0 0 40px rgba(16, 185, 129, 0.6); } }
+        .terminal-cursor { animation: blink 1s step-end infinite; }
+        .terminal-output { font-family: 'JetBrains Mono', monospace; white-space: pre-wrap; }
+        .pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        
+        .ansi-white { color: #ffffff; }
+        .ansi-green { color: #10b981; }
+        .ansi-red { color: #ef4444; }
+        .ansi-blue { color: #3b82f6; }
+        .ansi-yellow { color: #f59e0b; }
+        .ansi-cyan { color: #06b6d4; }
+        .ansi-purple { color: #a855f7; }
+    </style>
+</head>
+<body class="bg-neutral-950 text-neutral-100 min-h-screen overflow-hidden flex flex-col" style="font-family: 'Inter', sans-serif;">
+    
+    <div class="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 flex flex-col min-h-0">
+        
+        <!-- Header -->
+        <header class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-3 group">
+                <div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center pulse-glow">
+                    <span class="iconify text-white" data-icon="lucide:plug-zap" data-width="22" data-height="22"></span>
+                </div>
+                <div>
+                    <span class="text-xl font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent" id="cp-title">CP Console</span>
+                    <p class="text-xs text-neutral-500">Monitor & Engine Control</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2 glass rounded-full px-4 py-2">
+                    <div class="w-2 h-2 bg-red-500 rounded-full" id="monitor-status"></div>
+                    <span class="text-xs text-neutral-400">Monitor</span>
+                </div>
+                <div class="flex items-center gap-2 glass rounded-full px-4 py-2">
+                    <div class="w-2 h-2 bg-red-500 rounded-full" id="engine-status"></div>
+                    <span class="text-xs text-neutral-400">Engine</span>
+                </div>
+                <a href="index.html" class="glass rounded-full px-4 py-2 hover:bg-white/10 transition-all hover:scale-105 flex items-center gap-2">
+                    <span class="iconify text-emerald-400" data-icon="lucide:home" data-width="18" data-height="18"></span>
+                    <span class="text-sm font-medium hidden sm:inline">Dashboard</span>
+                </a>
+            </div>
+        </header>
+
+        <!-- Dual Terminal Grid -->
+        <div class="grid lg:grid-cols-2 gap-4 flex-1 min-h-0">
+            
+            <!-- MONITOR TERMINAL -->
+            <div class="glass rounded-2xl flex flex-col">
+                <div class="bg-neutral-900 px-4 py-2 flex items-center justify-between border-b border-neutral-800">
+                    <div class="flex items-center gap-2">
+                        <div class="flex gap-2">
+                            <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+                            <div class="w-3 h-3 rounded-full bg-amber-500/80"></div>
+                            <div class="w-3 h-3 rounded-full bg-emerald-500/80"></div>
+                        </div>
+                        <span class="text-xs text-neutral-500 ml-2">CP Monitor</span>
+                    </div>
+                    <button onclick="clearMonitor()" class="text-xs text-neutral-500 hover:text-neutral-300 transition">
+                        <span class="iconify" data-icon="lucide:trash-2" data-width="14" data-height="14"></span>
+                    </button>
+                </div>
+                
+                <div id="monitor-output" class="terminal-output text-sm p-4 flex-1 min-h-0 overflow-y-auto bg-neutral-950 text-emerald-400">
+                    <div class="text-neutral-500">Connecting to Monitor...</div>
+                </div>
+                
+                <div class="bg-neutral-900 border-t border-neutral-800 p-3 flex items-center gap-2">
+                    <span class="text-emerald-400 text-sm terminal-output">monitor:~$</span>
+                    <input 
+                        type="text" 
+                        id="monitor-input" 
+                        class="flex-1 bg-transparent text-emerald-400 text-sm outline-none terminal-output"
+                        placeholder="Type command..."
+                        autocomplete="off"
+                        onkeypress="handleMonitorInput(event)"
+                        disabled
+                    >
+                    <span class="terminal-cursor text-emerald-400 text-sm">▊</span>
+                </div>
+            </div>
+
+            <!-- ENGINE TERMINAL -->
+            <div class="glass rounded-2xl flex flex-col">
+                <div class="bg-neutral-900 px-4 py-2 flex items-center justify-between border-b border-neutral-800">
+                    <div class="flex items-center gap-2">
+                        <div class="flex gap-2">
+                            <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+                            <div class="w-3 h-3 rounded-full bg-amber-500/80"></div>
+                            <div class="w-3 h-3 rounded-full bg-emerald-500/80"></div>
+                        </div>
+                        <span class="text-xs text-neutral-500 ml-2">CP Engine</span>
+                    </div>
+                    <button onclick="clearEngine()" class="text-xs text-neutral-500 hover:text-neutral-300 transition">
+                        <span class="iconify" data-icon="lucide:trash-2" data-width="14" data-height="14"></span>
+                    </button>
+                </div>
+                
+                <div id="engine-output" class="terminal-output text-sm p-4 flex-1 min-h-0 overflow-y-auto bg-neutral-950 text-emerald-400">
+                    <div class="text-neutral-500">Connecting to Engine...</div>
+                </div>
+                
+                <div class="bg-neutral-900 border-t border-neutral-800 p-3 flex items-center gap-2">
+                    <span class="text-emerald-400 text-sm terminal-output">engine:~$</span>
+                    <input 
+                        type="text" 
+                        id="engine-input" 
+                        class="flex-1 bg-transparent text-emerald-400 text-sm outline-none terminal-output"
+                        placeholder="Type command..."
+                        autocomplete="off"
+                        onkeypress="handleEngineInput(event)"
+                        disabled
+                    >
+                    <span class="terminal-cursor text-emerald-400 text-sm">▊</span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="mt-4 grid grid-cols-2 gap-4">
+            <div>
+                <p class="text-xs text-neutral-500 mb-2">Monitor Actions:</p>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="sendMonitorCommand('status')" class="glass rounded-lg px-3 py-2 text-xs hover:bg-blue-500/10 transition-all flex items-center gap-2">
+                        <span class="iconify text-blue-400" data-icon="lucide:info" data-width="14" data-height="14"></span>
+                        Status
+                    </button>
+                    <button onclick="sendMonitorCommand('help')" class="glass rounded-lg px-3 py-2 text-xs hover:bg-purple-500/10 transition-all flex items-center gap-2">
+                        <span class="iconify text-purple-400" data-icon="lucide:help-circle" data-width="14" data-height="14"></span>
+                        Help
+                    </button>
+                </div>
+            </div>
+            <div>
+                <p class="text-xs text-neutral-500 mb-2">Engine Actions:</p>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="sendEngineCommand('2')" class="glass rounded-lg px-3 py-2 text-xs hover:bg-blue-500/10 transition-all flex items-center gap-2">
+                        <span class="iconify text-blue-400" data-icon="lucide:info" data-width="14" data-height="14"></span>
+                        Status
+                    </button>
+                    <button onclick="sendEngineCommand('3')" class="glass rounded-lg px-3 py-2 text-xs hover:bg-red-500/10 transition-all flex items-center gap-2">
+                        <span class="iconify text-red-400" data-icon="lucide:power" data-width="14" data-height="14"></span>
+                        Stop Charging
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let wsMonitor = null;
+        let wsEngine = null;
+        
+        const monitorOutput = document.getElementById('monitor-output');
+        const monitorInput = document.getElementById('monitor-input');
+        const monitorStatus = document.getElementById('monitor-status');
+        
+        const engineOutput = document.getElementById('engine-output');
+        const engineInput = document.getElementById('engine-input');
+        const engineStatus = document.getElementById('engine-status');
+
+        // Get CP ID from URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const cpId = urlParams.get('cp') || 'CP-001';
+        document.getElementById('cp-title').textContent = `CP Console - ${cpId}`;
+
+        // ANSI color parsing
+        const ansiRegex = /\033\[(\d+)m/g;
+        const colorMap = {
+            '37': 'ansi-white', '92': 'ansi-green', '91': 'ansi-red',
+            '94': 'ansi-blue', '93': 'ansi-yellow', '96': 'ansi-cyan',
+            '95': 'ansi-purple', '0': 'ansi-white'
+        };
+
+        function parseANSI(text) {
+            let result = '';
+            let lastIndex = 0;
+            let currentClass = 'ansi-white';
+            
+            text.replace(ansiRegex, (match, code, index) => {
+                if (index > lastIndex) {
+                    result += `<span class="${currentClass}">${escapeHtml(text.substring(lastIndex, index))}</span>`;
+                }
+                currentClass = colorMap[code] || 'ansi-white';
+                lastIndex = index + match.length;
+                return '';
+            });
+            
+            if (lastIndex < text.length) {
+                result += `<span class="${currentClass}">${escapeHtml(text.substring(lastIndex))}</span>`;
+            }
+            
+            return result || `<span class="${currentClass}">${escapeHtml(text)}</span>`;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function printToMonitor(text) {
+            if (text === '[CLEAR]') {
+                monitorOutput.innerHTML = '';
+                return;
+            }
+            const line = document.createElement('div');
+            line.innerHTML = parseANSI(text);
+            monitorOutput.appendChild(line);
+            monitorOutput.scrollTop = monitorOutput.scrollHeight;
+        }
+
+        function printToEngine(text) {
+            if (text === '[CLEAR]') {
+                engineOutput.innerHTML = '';
+                return;
+            }
+            const line = document.createElement('div');
+            line.innerHTML = parseANSI(text);
+            engineOutput.appendChild(line);
+            engineOutput.scrollTop = engineOutput.scrollHeight;
+        }
+
+        function connectMonitor() {
+            const cpNum = parseInt(cpId.split('-')[1]) || 1;
+            const wsPort = 9000 + (cpNum - 1);
+            
+            monitorOutput.innerHTML = `<div class="text-neutral-500">Connecting to Monitor...</div>`;
+            
+            wsMonitor = new WebSocket(`ws://localhost:${wsPort}`);
+            
+            wsMonitor.onopen = () => {
+                monitorStatus.className = 'w-2 h-2 bg-emerald-500 rounded-full animate-pulse';
+                monitorInput.disabled = false;
+                monitorInput.focus();
+            };
+            
+            wsMonitor.onmessage = (event) => printToMonitor(event.data);
+            
+            wsMonitor.onerror = () => {
+                printToMonitor('\033[91m❌ Monitor WebSocket error\033[0m');
+                monitorStatus.className = 'w-2 h-2 bg-red-500 rounded-full';
+            };
+            
+            wsMonitor.onclose = () => {
+                monitorStatus.className = 'w-2 h-2 bg-amber-500 rounded-full';
+                monitorInput.disabled = true;
+                printToMonitor('\033[93m⚠️ Reconnecting in 3s...\033[0m');
+                setTimeout(connectMonitor, 3000);
+            };
+        }
+
+        function connectEngine() {
+            const cpNum = parseInt(cpId.split('-')[1]) || 1;
+            const wsPort = 9100 + (cpNum - 1);
+            
+            engineOutput.innerHTML = `<div class="text-neutral-500">Connecting to Engine...</div>`;
+            
+            wsEngine = new WebSocket(`ws://localhost:${wsPort}`);
+            
+            wsEngine.onopen = () => {
+                engineStatus.className = 'w-2 h-2 bg-emerald-500 rounded-full animate-pulse';
+                engineInput.disabled = false;
+            };
+            
+            wsEngine.onmessage = (event) => printToEngine(event.data);
+            
+            wsEngine.onerror = () => {
+                printToEngine('\033[91m❌ Engine WebSocket error\033[0m');
+                engineStatus.className = 'w-2 h-2 bg-red-500 rounded-full';
+            };
+            
+            wsEngine.onclose = () => {
+                engineStatus.className = 'w-2 h-2 bg-amber-500 rounded-full';
+                engineInput.disabled = true;
+                printToEngine('\033[93m⚠️ Reconnecting in 3s...\033[0m');
+                setTimeout(connectEngine, 3000);
+            };
+        }
+
+        function sendMonitorCommand(cmd) {
+            if (wsMonitor && wsMonitor.readyState === WebSocket.OPEN) {
+                wsMonitor.send(cmd);
+                monitorInput.value = '';
+            }
+        }
+
+        function sendEngineCommand(cmd) {
+            if (wsEngine && wsEngine.readyState === WebSocket.OPEN) {
+                wsEngine.send(cmd);
+                engineInput.value = '';
+            }
+        }
+
+        function handleMonitorInput(event) {
+            if (event.key === 'Enter') {
+                const command = monitorInput.value.trim();
+                if (command) sendMonitorCommand(command);
+            }
+        }
+
+        function handleEngineInput(event) {
+            if (event.key === 'Enter') {
+                const command = engineInput.value.trim();
+                if (command) sendEngineCommand(command);
+            }
+        }
+
+        function clearMonitor() {
+            monitorOutput.innerHTML = '';
+        }
+
+        function clearEngine() {
+            engineOutput.innerHTML = '';
+        }
+
+        // Connect on load
+        window.addEventListener('load', () => {
+            connectMonitor();
+            connectEngine();
+        });
+    </script>
+</body>
+</html>
