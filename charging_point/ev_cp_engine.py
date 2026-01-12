@@ -1,5 +1,5 @@
 # ============================================================================
-# EVCharging System - EV_CP_E (Charging Point Engine) - WITH CHARGE REQUEST
+# EVCharging System - EV_CP_E (Charging Point Engine) - FIXED PROGRESS
 # ============================================================================
 
 import socket
@@ -244,9 +244,8 @@ class EVCPEngine:
                 driver_id = self.current_driver
                 session = self.current_session
 
-                elapsed = time.time() - session["start_time"]
-                total_seconds = 14.0
-                kwh_delivered = min(session["kwh_needed"], (elapsed / total_seconds) * session["kwh_needed"])
+                # Use actual delivered kWh, not estimated
+                kwh_delivered = session["kwh_delivered"]
                 total_amount = round(kwh_delivered * self.price_per_kwh, 2)
 
                 print(f"\n[{self.cp_id}] Supply ended by CENTRAL")
@@ -303,9 +302,8 @@ class EVCPEngine:
                 driver_id = self.current_driver
                 session = self.current_session
 
-                elapsed = time.time() - session["start_time"]
-                total_seconds = 14.0
-                kwh_delivered = min(session["kwh_needed"], (elapsed / total_seconds) * session["kwh_needed"])
+                # Use actual delivered kWh
+                kwh_delivered = session["kwh_delivered"]
                 total_amount = round(kwh_delivered * self.price_per_kwh, 2)
 
                 print(f"\n[{self.cp_id}] Vehicle unplugged")
@@ -351,9 +349,11 @@ class EVCPEngine:
                     if self.state == CP_STATES["SUPPLYING"] and self.current_session:
                         session = self.current_session
 
+                        # Calculate kWh per second (14 seconds for full charge)
                         kwh_this_second = session["kwh_needed"] / 14.0
                         session["kwh_delivered"] += kwh_this_second
 
+                        # Check if charging complete
                         if session["kwh_delivered"] >= session["kwh_needed"]:
                             session["kwh_delivered"] = session["kwh_needed"]
                             
@@ -363,6 +363,7 @@ class EVCPEngine:
                             
                             continue
 
+                        # Calculate cumulative amount based on total kWh delivered
                         amount = session["kwh_delivered"] * self.price_per_kwh
                         session["amount"] = amount
 
@@ -370,12 +371,13 @@ class EVCPEngine:
                         print(f"[{self.cp_id}] {session['kwh_delivered']:.3f} kWh | {amount:.2f}€ (IN USE - CHARGING)")
 
                         try:
+                            # Send the INCREMENT and TOTAL AMOUNT
                             update_msg = Protocol.encode(
                                 Protocol.build_message(
                                     "SUPPLY_UPDATE",
                                     self.cp_id,
-                                    f"{kwh_this_second:.6f}",
-                                    f"{amount:.2f}"
+                                    f"{kwh_this_second:.6f}",  # This update's increment
+                                    f"{amount:.2f}"  # Total cumulative amount
                                 )
                             )
                             self.central_socket.send(update_msg)

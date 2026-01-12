@@ -5,3 +5,11 @@
 {"timestamp": "2026-01-10T11:39:34.732949", "cp_id": "CP-001", "driver_id": "DRIVER-001", "kwh_delivered": 15.0, "total_amount": 7.5, "duration_seconds": 19}
 {"timestamp": "2026-01-10T13:08:11.685000", "cp_id": "CP-001", "driver_id": "DRIVER-001", "kwh_delivered": 10.0, "total_amount": 3.0, "duration_seconds": 27}
 {"timestamp": "2026-01-10T15:46:59.501708", "cp_id": "CP-001", "driver_id": "DRIVER-001", "kwh_delivered": 10.0, "total_amount": 3.0, "duration_seconds": 30}
+{"timestamp": "2026-01-12T08:59:32.726266", "cp_id": "CP-001", "driver_id": "DRIVER-001", "kwh_delivered": 40.0, "total_amount": 12.0, "duration_seconds": 17}
+{"timestamp": "2026-01-12T09:00:46.881028", "cp_id": "CP-001", "driver_id": "DRIVER-001", "kwh_delivered": 10.0, "total_amount": 3.0, "duration_seconds": 37}
+{"timestamp": "2026-01-12T09:01:36.718613", "cp_id": "CP-001", "driver_id": "DRIVER-001", "kwh_delivered": 10.0, "total_amount": 3.0, "duration_seconds": 18}
+{"timestamp": "2026-01-12T09:02:21.701102", "cp_id": "CP-001", "driver_id": "DRIVER-001", "kwh_delivered": 1.0, "total_amount": 0.3, "duration_seconds": 19}
+{"timestamp": "2026-01-12T09:09:51.000710", "cp_id": "CP-001", "driver_id": "DRIVER-001", "kwh_delivered": 10.0, "total_amount": 3.0, "duration_seconds": 18}
+{"timestamp": "2026-01-12T09:10:18.273730", "cp_id": "CP-001", "driver_id": "DRIVER-001", "kwh_delivered": 10.0, "total_amount": 3.0, "duration_seconds": 18}
+{"timestamp": "2026-01-12T09:10:52.896657", "cp_id": "CP-001", "driver_id": "DRIVER-001", "kwh_delivered": 22.0, "total_amount": 6.6, "duration_seconds": 21}
+{"timestamp": "2026-01-12T09:11:42.434025", "cp_id": "CP-001", "driver_id": "DRIVER-001", "kwh_delivered": 10.0, "total_amount": 3.0, "duration_seconds": 40}
